@@ -1,2 +1,2 @@
 # mobiledna_py
-Codebase for working with mobileDNA data
+Codebase in support of mobileDNA platform
