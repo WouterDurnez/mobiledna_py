@@ -22,7 +22,7 @@ import pandas as pd
 from elasticsearch import Elasticsearch
 import numpy as np
 
-import mobiledna.basics.mobdna_help as help
+import mobiledna.basics.help as help
 
 # Globals
 pp = PrettyPrinter(indent=4)
