@@ -1,5 +1,11 @@
 from setuptools import setup
 
+
+def readme():
+    with open('README.md') as f:
+        return f.read()
+
+
 setup(name='mobiledna',
       version='0.01',
       description='Codebase in support of mobileDNA platform',
