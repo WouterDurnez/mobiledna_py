@@ -21,6 +21,7 @@ from pprint import PrettyPrinter
 import pandas as pd
 from elasticsearch import Elasticsearch
 import numpy as np
+import mobiledna.communication.config as cfg
 
 import mobiledna.basics.help as help
 
@@ -69,7 +70,7 @@ doc_types = {"appevents","notifications","sessions"}
 # Connect to ElasticSearch repository #
 #######################################
 
-def connect(server='10.10.160.36', port=9200) -> Elasticsearch:
+def connect(server=cfg.server, port=cfg.port) -> Elasticsearch:
     """Establish connection with data"""
 
     es = Elasticsearch(
