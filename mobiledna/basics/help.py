@@ -61,13 +61,12 @@ index_fields = {
     ]
 }
 
-
 ####################
 # GLOBAL VARIABLES #
 ####################
 
 # Set log level (1 = only top level log messages -> 3 = all log messages)
-LOG_LEVEL = 1
+LOG_LEVEL = 3
 
 
 #############
@@ -187,7 +186,7 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
     elif index == 'appevents':
 
         # Reformat data version (trying to convert to int)
-        df.data_version = pd.to_numeric((df.data_version * 100).round(), downcast='unsigned')
+        df.data_version = pd.to_numeric(df.data_version, downcast='float')
 
         # Downcast timestamps
         df.startTimeMillis = pd.to_numeric(df.startTimeMillis, downcast='unsigned')
@@ -245,11 +244,52 @@ def add_duration(df: pd.DataFrame) -> pd.DataFrame:
     except:
         raise Exception("ERROR: Failed to calculate duration!")
 
-    # Check if there are any negative durations by comparing with duration 0.
+    # Check if there are any negative durations.
     if not df[df["duration"] < 0].empty:
         raise Warning("WARNING: encountered negative duration!")
 
     return df
+
+
+def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False):
+    """
+    Wrapper function to save mobileDNA data frames.
+
+    :param df: data to store on disk
+    :param dir: location to store it in
+    :param name: name of the file
+    :param csv_file: save in CSV format (bool)
+    :param pickle: save in pickle format (bool)
+    :return: /
+    """
+
+    path = os.path.join(dir, name)
+
+    # Store to CSV
+    if csv_file:
+
+        # Try and save it
+        try:
+
+            df.to_csv(path_or_buf=path + ".csv", sep=";", decimal='.')
+
+            log("Saved data frame to {}".format(dir + ".csv_file"))
+
+        except Exception as e:
+
+            log("Failed to store data frame! - ", e, lvl=1)
+
+    # Store to pickle
+    if pickle:
+
+        try:
+
+            df.to_pickle(path=path + ".pkl")
+            log("Saved data frame to {}".format(dir + ".pkl"))
+
+        except Exception as e:
+
+            log("Failed to store data frame! - ", e, lvl=1)
 
 
 def load(path: str, index: str, file_type="csv", sep=";", dec='.') -> pd.DataFrame:
@@ -300,38 +340,20 @@ def load(path: str, index: str, file_type="csv", sep=";", dec='.') -> pd.DataFra
 
 
 def get_unique(column: str, df: pd.DataFrame) -> np.ndarray:
-    """Get list of unique column values in given data frame."""
+    """
+    Get list of unique column values in given data frame.
 
-    # Checking if df has necessary column
-    if column not in df.columns:
-        print("Could not find variable {column} in dataframe - terminating script\n".format(column=column))
-        return np.nan
+    :param column: column to sift through
+    :param df: data frame to look in
+    :return: unique values in given column
+    """
 
-    else:
+    try:
         unique_values = df[column].unique()
-        return unique_values
+    except:
+        raise Exception("Could not find variable {column} in dataframe.".format(column=column))
 
-
-def save(df: pd.DataFrame, dir: str, name: str, csv=True, pickle=False):
-    """Save a data frame as a csv file or pickle."""
-
-    path = os.path.join(dir, name)
-
-    if csv:
-        try:
-            df.to_csv(path_or_buf=path + ".csv", sep=";")
-            print("Saved dataframe to {}".format(path + ".csv"))
-        except Exception as e:
-            print("Failed to store dataframe! - ", e)
-
-    if pickle:
-        try:
-            df.to_pickle(path=path + ".pkl")
-            print("Saved data frame to {}".format(path + ".pkl"))
-        except Exception as e:
-            print("Failed to store data frame! - ", e)
-
-    print()
+    return unique_values
 
 
 ########
