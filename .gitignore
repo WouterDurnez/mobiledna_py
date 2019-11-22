@@ -1,4 +1,4 @@
-# ignore .idea folder
+# Ignore .idea folder
 *.idea
 
 # Compiled python modules.

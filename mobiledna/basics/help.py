@@ -16,12 +16,50 @@ HELPER FUNCTIONS
 import os
 import time
 from pprint import PrettyPrinter
+from typing import Callable
 
 import numpy as np
 import pandas as pd
 
 pp = PrettyPrinter(indent=4)
-doc_types = {"notifications", "appevents", "sessions", "logs"}
+indices = {'notifications', 'appevents', 'sessions', 'logs'}
+index_fields = {
+    'notifications': [
+        'application',
+        'data_version',
+        'id',
+        'notificationID',
+        'ongoing',
+        'posted',
+        'priority',
+        'studyKey',
+        'surveyId',
+        'time'],
+    'appevents': [
+        'application',
+        'battery',
+        'data_version',
+        'endTimeMillis',
+        'id',
+        'latitude',
+        'longitude',
+        'model',
+        'notification',
+        'notificationId',
+        'session',
+        'startTimeMillis',
+        'studyKey',
+        'surveyId'
+    ],
+    'sessions': [
+        'data_version',
+        'id',
+        'session on',
+        'studyKey',
+        'surveyId',
+        'timestamp'
+    ]
+}
 
 
 ####################
@@ -73,8 +111,12 @@ def log(*message, lvl=3, sep="", title=False):
     return
 
 
-def time_it(f):
-    """Timer decorator: shows how long execution of function took."""
+def time_it(f: Callable):
+    """
+    Timer decorator: shows how long execution of function took.
+    :param f: function to measure
+    :return: /
+    """
 
     def timed(*args, **kwargs):
         t1 = time.time()
@@ -109,7 +151,8 @@ def make_folders(*folders):
 ############################
 
 def hi():
-    """Say hello. (It's a stupid function, I know.)"""
+    """Say hello. (It's stupid, I know.) Also set some """
+
     print("\n")
     print("    __  ___      __    _ __     ____  _   _____ ")
     print("   /  |/  /___  / /_  (_) /__  / __ \/ | / /   |")
@@ -118,6 +161,8 @@ def hi():
     print("/_/  /_/\____/_.___/_/_/\___/_____/_/ |_/_/  |_|")
     print("\n")
 
+    # Set this warning if you intend to keep working on the same data frame,
+    # and you're not too worried about messing up the raw data.
     pd.set_option('chained_assignment', None)
 
 
@@ -125,96 +170,131 @@ def hi():
 # Data frame functions #
 ########################
 
-def load(path: str, doc_type: str, file_type="csv", sep=";") -> pd.DataFrame:
-    """Just a reading wrapper to load data frames."""
+def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
+    """
+    Set the data types of each column in a data frame, depending on the index.
+    This is done to save memory.
 
-    # Check if doc_type is valid
-    if doc_type not in doc_types:
-        raise Exception("Invalid type!")
+    :param df: data frame to format
+    :param index: type of data
+    :return: formatted data frame
+    """
 
-    # Load data frame, depending on file type
-    if file_type=="csv":
-        df = pd.read_csv(filepath_or_buffer=path, sep=sep, error_bad_lines=False)
-    elif file_type=="pickle":
-        df = pd.read_pickle(path=path)
-    else:
-        raise Exception("You want me to read what now?")
+    # Check if index is valid
+    if index not in indices:
+        raise Exception("ERROR: Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', or 'logs'.")
 
-    # If there's nothing there, just go ahead and return the empty df
-    if df.empty:
+    elif index == 'appevents':
 
-        return df
+        # Reformat data version (trying to convert to int)
+        df.data_version = pd.to_numeric((df.data_version * 100).round(), downcast='unsigned')
 
-    # Go over different doc_types and format columns where necessary
-    if doc_type == "appevents":
+        # Downcast timestamps
+        df.startTimeMillis = pd.to_numeric(df.startTimeMillis, downcast='unsigned')
+        df.endTimeMillis = pd.to_numeric(df.endTimeMillis, downcast='unsigned')
 
-        df['endTime'] = pd.to_datetime(df['endTime'])
-        df['startTime'] = pd.to_datetime(df['startTime'])
+        # Downcast lat/long
+        df.latitude = pd.to_numeric(df.latitude, downcast='float')
+        df.longitude = pd.to_numeric(df.longitude, downcast='float')
 
-        if 'duration' not in df:
-            add_duration(df)
+        # Downcast battery column
+        df.battery = df.battery.astype('uint8')
 
-        df["duration"] = pd.to_timedelta(df["duration"])
+        # Factorize categorical variables (ids, apps, session numbers, etc.)
+        df.id = df.id.astype('category')
+        df.application = df.application.astype('category')
+        df.session = df.session.astype('category')
+        df.studyKey = df.studyKey.astype('category')
+        df.surveyId = df.surveyId.astype('category')
+        df.model = df.model.astype('category')
 
-    elif doc_type == "sessions":
+    elif index == 'notifications':
+
+        df['time'] = pd.to_datetime(df['time'])
+
+    elif index == 'sessions':
 
         df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-    elif doc_type == "notifications":
+    elif index == 'logs':
 
-        df['time'] = pd.to_datetime(df['time'])
+        df['date'] = pd.to_datetime(df['date'])
+
+    for col in df.columns:
+
+        if col.startswith('Unnamed') or col not in index_fields[index]:
+            df.drop(labels=[col], axis=1, inplace=True)
 
     return df
 
 
-def load_all(dir: str,
-             doc_types=("notifications","appevents","sessions"),
-             file_type="csv") -> dict:
-    """Load pickle or csv data into dataframes, and merge them."""
-
-    # Put the data here
-    data = {}
-
-    # Go over types of data we wish to load
-    for doc_type in doc_types:
-
-        t1 = time.time()
-
-        # Store data separately based on doc_type
-        data[doc_type] = {}
-
-        # Look for files in corresponding folders
-        for file in os.listdir(dir + doc_type):
-
-            # Get id (first part of file name)
-            id = file.split(sep="_")[0]
-            path = dir + doc_type + "/" + file
-
-            df = load(path=path, doc_type=doc_type, file_type=file_type)
-
-            if not df.empty:
-
-                data[doc_type][id] = df
-
-        t2 = time.time()
-
-        print("-- Got {doc_type} in {time} seconds.".format(doc_type=doc_type, time=round(t2 - t1, 2)))
-
-    return data
-
-
 def add_duration(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculate app event duration and add to (new) data frame."""
+    """
+    Calculate app event duration and add to (new) data frame.
+
+    :param df: data frame to process (should be appevents index)
+    :return: modified data frame
+    """
+
+    if 'startTimeMillis' not in df.columns or \
+            'endTimeMillis' not in df.columns:
+        raise Exception("ERROR: Necessary columns missing!")
 
     try:
-        df['duration'] = pd.to_datetime(df["endTime"]) - pd.to_datetime(df["startTime"])
-        df["duration_s"] = df.apply(lambda row: row["duration"].total_seconds(), axis=1)
+        df['duration'] = df['endTimeMillis'] - df['startTimeMillis']
     except:
-        raise Exception("Could not calculate duration!")
+        raise Exception("ERROR: Failed to calculate duration!")
 
     # Check if there are any negative durations by comparing with duration 0.
-    if not df[df["duration"] < pd.Timedelta(0)].empty:
-        print("WARNING: encountered negative duration!")
+    if not df[df["duration"] < 0].empty:
+        raise Warning("WARNING: encountered negative duration!")
+
+    return df
+
+
+def load(path: str, index: str, file_type="csv", sep=";", dec='.') -> pd.DataFrame:
+    """
+    Wrapper function to load mobileDNA data frames.
+
+    :param path: location of data frame
+    :param index: type of mobileDNA data
+    :param file_type: file type (currently: cvs or pickle).
+    :param sep: field separator
+    :param dec: decimal symbol
+    :return: data frame
+    """
+
+    # Check if index is valid
+    if index not in indices:
+        raise Exception("Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', or 'logs'.")
+
+    # Load data frame, depending on file type
+
+    # CSV
+    if file_type == "csv":
+        df = pd.read_csv(filepath_or_buffer=path,
+                         # usecols=,
+                         sep=sep, error_bad_lines=False)
+
+    # Pickle
+    elif file_type == "pickle":
+        df = pd.read_pickle(path=path)
+
+    # ... add new file types here (e.g., parquet?)
+
+    # Unknown
+    else:
+        raise Exception("You want me to read what now? Invalid file type! ")
+
+    # If there's nothing there, just go ahead and return the empty df
+    if df.empty:
+        return df
+
+    # Go over different indices and format columns where necessary
+    df = format_data(df=df, index=index)
+
+    if 'duration' not in df:
+        add_duration(df)
 
     return df
 
@@ -232,7 +312,7 @@ def get_unique(column: str, df: pd.DataFrame) -> np.ndarray:
         return unique_values
 
 
-def save(df:pd.DataFrame, dir: str, name: str, csv=True, pickle=False):
+def save(df: pd.DataFrame, dir: str, name: str, csv=True, pickle=False):
     """Save a data frame as a csv file or pickle."""
 
     path = os.path.join(dir, name)
@@ -259,7 +339,9 @@ def save(df:pd.DataFrame, dir: str, name: str, csv=True, pickle=False):
 ########
 
 if __name__ in ['__main__', 'builtins']:
-
     # Howdy
     hi()
 
+    df = load(path="../../../data/191120_lfael_appevents.csv", index='appevents')
+
+    df.info(verbose=False)
