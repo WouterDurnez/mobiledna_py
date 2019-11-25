@@ -64,9 +64,9 @@ def connect(server=cfg.server, port=cfg.port) -> Elasticsearch:
     return es
 
 
-#######################################################
-# Functions to get or filter IDs (from server or file #
-#######################################################
+##############################################
+# Functions to load IDs (from server or file #
+##############################################
 
 def ids_from_file(dir: str, file_name='ids', file_type='csv') -> list:
     """
@@ -175,10 +175,25 @@ def ids_from_server(index="appevents",
     return ids
 
 
-def common_ids(doc_type="appevents",
-               time_range=('2018-01-01T00:00:00.000', '2020-01-01T00:00:00.000')) -> (list, dict):
-    """Which IDs are present in all indices? Returns a list of common ids,
-    as well as a restricted count of docs in given index."""
+################################################
+# Functions to filter IDs (from server or file #
+################################################
+
+def common_ids(index="appevents",
+               time_range=('2018-01-01T00:00:00.000', '2020-01-01T00:00:00.000')) -> dict:
+    """
+    This function attempts to find those IDs which have the most complete data, since there have been
+    problems in the past where not all data get sent to the server (e.g., no notifications were registered).
+    The function returns a list of IDs that occur in each index (apart from the logs, which may occur only
+    once at the start of logging, and fall out of the time range afterwards).
+
+    The function returns a dictionary, where keys are the detected IDs, and values correspond with
+    the number of entries in an index of our choosing.
+
+    :param index: index in which to count entries for IDs that have data in each index
+    :param time_range: time period in which to search
+    :return: dictionary with IDs for keys, and index entries for values
+    """
 
     ids = {}
     id_sets = {}
@@ -197,23 +212,33 @@ def common_ids(doc_type="appevents",
 
     log("{n} IDs were found in all indices.\n".format(n=len(ids_inter)), lvl=1)
 
-    return list(ids_inter), {id: ids[doc_type][id] for id in ids_inter}
+    return {id: ids[index][id] for id in ids_inter}
 
 
 def richest_ids(ids: dict, top=100) -> dict:
-    """Return IDs with largest counts."""
+    """
+    Given a dictionary with IDs and number of entries,
+    return top X IDs with largest numbers.
 
-    rich_ids = dict(sorted(ids.items(), key=lambda t: t[1], reverse=True)[:top])
+    :param ids: dictionary with IDs and entry counts
+    :param top: how many do you want (descending order)? Enter 0 for full sorted list
+    :return: ordered subset of IDs
+    """
 
-    return rich_ids
+    if top == 0:
+        top = len(ids)
+
+    rich_selection = dict(sorted(ids.items(), key=lambda t: t[1], reverse=True)[:top])
+
+    return rich_selection
 
 
-def random_ids(ids: dict, n=100) -> list:
+def random_ids(ids: dict, n=100) -> dict:
     """Return random sample of ids."""
 
-    selection = {k: ids[k] for k in random.sample(population=ids.keys(), k=n)}
+    random_selection = {k: ids[k] for k in random.sample(population=ids.keys(), k=n)}
 
-    return selection
+    return random_selection
 
 
 ###########################################
@@ -374,7 +399,7 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
 ##################################################
 
 def pipeline(dir: str, name: str, ids: list,
-             doc_types={"appevents", "sessions", "notifications"},
+             indices=("appevents", "sessions", "notifications"),
              time_range=('2018-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
              pickle=True, csv_file=False):
     """Get all indices sequentially."""
@@ -383,16 +408,16 @@ def pipeline(dir: str, name: str, ids: list,
     all_df = {}
 
     # Go over interesting indices
-    for doc_type in doc_types:
+    for index in indices:
         # Get data from server
-        print("\nGetting " + doc_type + "...\n")
-        data = fetch(doc_type=doc_type, ids=ids, time_range=time_range)
+        print("\nGetting " + index + "...\n")
+        data = fetch(doc_type=index, ids=ids, time_range=time_range)
 
         # Export data
-        print("\n\nExporting " + doc_type + "...")
-        export_elastic(dir=dir, name=name, index=doc_type, data=data, csv_file=csv_file, pickle=pickle)
+        print("\n\nExporting " + index + "...")
+        export_elastic(dir=dir, name=name, index=index, data=data, csv_file=csv_file, pickle=pickle)
 
-        all_df[doc_type] = data
+        all_df[index] = data
 
     print("\nDone!\n")
 
@@ -400,8 +425,8 @@ def pipeline(dir: str, name: str, ids: list,
 
 
 def split_pipeline(dir: str, name: str, ids: list,
-                   time_range=('2018-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
-                   subfolder=False,
+                   indices=('appevents', 'notifications', 'sessions', 'logs'),
+                   time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
                    pickle=True, csv_file=False):
     """Same pipeline, but split up for ids."""
 
@@ -411,12 +436,12 @@ def split_pipeline(dir: str, name: str, ids: list,
         print("# ID {} #".format(id))
         print("###########################################")
 
-        pipeline(dir=dir + "/" + name,
+        pipeline(dir=dir,
                  name=id,
                  ids=[id],
+                 indices=indices,
                  time_range=time_range,
                  pickle=pickle,
-                 subfolder=subfolder,
                  csv_file=csv_file)
 
     print("\nAll done!\n")
@@ -430,7 +455,7 @@ if __name__ in ['__main__', 'builtins']:
     # Sup?
     hlp.hi()
 
-    IDs = ["d1002904-3a30-4515-816e-ef5b6b8ec84a",
+    ids = ["d1002904-3a30-4515-816e-ef5b6b8ec84a",
            "273f3a6e-d724-4ed3-80e7-d9ec73b3ad24"]
 
     # Set time range
@@ -445,4 +470,10 @@ if __name__ in ['__main__', 'builtins']:
     )
 
     df = data['appevents']"""
-    data = common_ids(time_range=('2019-11-01T00:00:00.000', '2020-01-01T00:00:00.000'))
+    # ids = ids_from_server(index='appevents', time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'))
+    split_pipeline(dir="../../../data/",
+                   ids=ids,
+                   name='test', indices=('appevents',),
+                   time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
+                   pickle=False,
+                   csv_file=True)

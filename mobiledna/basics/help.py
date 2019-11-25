@@ -273,7 +273,7 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False):
 
             df.to_csv(path_or_buf=path + ".csv", sep=";", decimal='.')
 
-            log("Saved data frame to {}".format(dir + ".csv_file"))
+            log("Saved data frame to {}".format(path + ".csv_file"))
 
         except Exception as e:
 
