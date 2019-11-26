@@ -67,11 +67,32 @@ index_fields = {
 
 # Set log level (1 = only top level log messages -> 3 = all log messages)
 LOG_LEVEL = 3
-
+DATA_DIR = os.path.join(os.pardir, os.pardir, 'data')
 
 #############
 # FUNCTIONS #
 #############
+
+def set_param(log_level=None, data_dir=None):
+    """
+    Set mobileDNA parameters.
+
+    :param log_level: new value for log level
+    :param data_dir: new data directory
+    """
+
+    # Declare these variables to be global
+    global LOG_LEVEL
+    global DATA_DIR
+
+    # Set log level
+    if log_level:
+        LOG_LEVEL = log_level
+
+    # Set new data directory
+    if data_dir:
+        DATA_DIR = data_dir
+
 
 def log(*message, lvl=3, sep="", title=False):
     """
@@ -150,7 +171,8 @@ def make_folders(*folders):
 ############################
 
 def hi():
-    """Say hello. (It's stupid, I know.) Also set some """
+    """Say hello. (It's stupid, I know.)
+    If there's anything to initialize, do so here."""
 
     print("\n")
     print("    __  ___      __    _ __     ____  _   _____ ")
@@ -159,6 +181,10 @@ def hi():
     print(" / /  / / /_/ / /_/ / / /  __/ /_/ / /|  / ___ |")
     print("/_/  /_/\____/_.___/_/_/\___/_____/_/ |_/_/  |_|")
     print("\n")
+
+    print("LOG_LEVEL is set to {}.".format(LOG_LEVEL))
+    print("DATA_DIR is set to {}".format(DATA_DIR))
+    print()
 
     # Set this warning if you intend to keep working on the same data frame,
     # and you're not too worried about messing up the raw data.
@@ -285,11 +311,11 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False):
         try:
 
             df.to_pickle(path=path + ".pkl")
-            log("Saved data frame to {}".format(dir + ".pkl"))
+            log("Saved data frame to {}".format(path + ".pkl"))
 
         except Exception as e:
 
-            log("Failed to store data frame! - ", e, lvl=1)
+            log("WARNING: Failed to store data frame! {e}".format(e=e), lvl=1)
 
 
 def load(path: str, index: str, file_type="csv", sep=";", dec='.') -> pd.DataFrame:

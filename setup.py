@@ -8,15 +8,14 @@ def readme():
 
 
 setup(name='mobiledna',
-      version='0.01',
+      version='0.1',
       description='Codebase in support of mobileDNA platform',
       long_description='mobileDNA is a data logging app that sheds '
                        'light on smartphone usage. Data collected '
-                       'through this app can be analysed using this '
+                       'through the app can be analysed using this '
                        'package, which contains communication scripts '
-                       '(to communicate with the server), basis '
-                       'analyses functionality, advanced analyses '
-                       'functionality, and visual dashboards.',
+                       '(to communicate with the server), basic and advanced '
+                       'analytic functionality, and visual dashboards.',
       url='https://github.ugent.be/imec-mict-UGent/mobiledna_py',
       author='Kyle Van Gaeveren & Wouter Durnez',
       author_email='Wouter.Durnez@UGent.be',

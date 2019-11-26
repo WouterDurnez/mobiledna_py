@@ -13,18 +13,19 @@ ELASTICSEARCH FUNCTIONS
 -- mailto:Wouter.Durnez@UGent.be
 """
 
+import base64
 import csv
 import os
 import random
 import sys
 from pprint import PrettyPrinter
-import base64
+
 import pandas as pd
 from elasticsearch import Elasticsearch
 
 import mobiledna.basics.help as hlp
-from mobiledna.basics.help import log
 import mobiledna.communication.config as cfg
+from mobiledna.basics.help import log
 
 # Globals
 pp = PrettyPrinter(indent=4)
@@ -203,7 +204,6 @@ def common_ids(index="appevents",
 
     # Go over most important indices (fuck logs, they're useless).
     for type in {"sessions", "notifications", "appevents"}:
-
         # Collect counts per id, per index
         ids[type] = ids_from_server(index=type, time_range=time_range)
 
@@ -248,13 +248,27 @@ def random_ids(ids: dict, n=100) -> dict:
 # Functions to get data, based on id list #
 ###########################################
 
-def fetch(doc_type: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01-01T00:00:00.000')) -> dict:
-    """Fetch data from server"""
+def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01-01T00:00:00.000')) -> dict:
+    """
+    Fetch data from server, for given ids, within certain timeframe.
+
+    :param index: type of data we will gather
+    :param ids: only gather data for these IDs
+    :param time_range: only look in this time range
+    :return: dict containing data (ES JSON format)
+    """
+
+    # Establish connection
+    es = connect()
 
     # Are we looking for the right indices?
-    if doc_type not in indices:
+    if index not in indices:
         raise Exception("Can't fetch data for anything other than appevents,"
                         " notifications or sessions (or logs, but whatever).")
+
+    count_tot = es.count(index="mobiledna", doc_type=index)
+    log("There are {count} entries of the type <{index}>.".
+        format(count=count_tot["count"], index=index), lvl=3)
 
     # If there's more than one ID, recursively call this function
     if len(ids) > 1:
@@ -263,21 +277,22 @@ def fetch(doc_type: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020
         dump_dict = {}
 
         # Go over IDs and try to fetch data
-        for index, id in enumerate(ids):
+        for idx, id in enumerate(ids):
 
-            print("ID {index}: \t{id}".format(index=index + 1, id=id))
+            log("Getting data: ID {id_index}/{total_ids}: \t{id}".format(
+                id_index=idx + 1,
+                total_ids=len(ids),
+                id=id))
+
             try:
-                dump_dict[id] = fetch(doc_type=doc_type, ids=[id], time_range=time_range)[id]
-            except:
-                print("Fetch failed for {id}".format(id=id))
+                dump_dict[id] = fetch(index=index, ids=[id], time_range=time_range)[id]
+            except Exception as e:
+                log("Fetch failed for {id}: {e}".format(id=id, e=e), lvl=1)
 
         return dump_dict
 
     # If there's one ID, fetch data
     else:
-
-        # Establish connection
-        es = connect()
 
         # Base query
         body = {
@@ -306,7 +321,7 @@ def fetch(doc_type: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020
             stop = time_range[1]
             range_restriction = {
                 'range':
-                    {time_var[doc_type]:
+                    {time_var[index]:
                          {'format': "yyyy-MM-dd'T'HH:mm:ss.SSS",
                           'gte': start,
                           'lte': stop}
@@ -315,14 +330,12 @@ def fetch(doc_type: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020
             body['query']['constant_score']['filter']['bool']['must'].append(range_restriction)
 
         except:
-            print("Failed to restrict range. Getting all data.")
+            log("WARNING: Failed to restrict range. Getting all data.", lvl=1)
 
         # Count entries
-        count_tot = es.count(index="mobiledna", doc_type=doc_type)
-        count_ids = es.count(index="mobiledna", doc_type=doc_type, body=body)
+        count_ids = es.count(index="mobiledna", doc_type=index, body=body)
 
-        print("There are {count} entries of the type <{doc_type}>.".format(count=count_tot["count"], doc_type=doc_type))
-        print("Selecting {ids} leaves {count} entries.".format(ids=ids, count=count_ids["count"]))
+        log("Selecting {ids} yields {count} entries.".format(ids=ids, count=count_ids["count"]), lvl=2)
 
         # Search using scroller (avoid overload)
         res = es.search(index="mobiledna",
@@ -330,7 +343,7 @@ def fetch(doc_type: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020
                         request_timeout=120,
                         size=1000,  # Get first 1000 results
                         scroll='30s',  # Get scroll id to get next results
-                        doc_type=doc_type)
+                        doc_type=index)
 
         # Update scroll id
         scroll_id = res['_scroll_id']
@@ -352,7 +365,7 @@ def fetch(doc_type: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020
             scroll_id = res['_scroll_id']
             temp_size = len(res['hits']['hits'])  # As long as there are results, keep going ...
             remaining = (total_size - (ct * 1000)) if (total_size - (ct * 1000)) > 0 else temp_size
-            sys.stdout.write("Entries remaining: {rmn}\r".format(rmn=remaining))
+            sys.stdout.write("Entries remaining: {rmn} \r".format(rmn=remaining))
             sys.stdout.flush()
 
         es.clear_scroll(body={'scroll_id': [scroll_id]})  # Cleanup (otherwise Scroll id remains in ES memory)
@@ -377,18 +390,24 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
     :return: /
     """
 
+    # Does the directory exist? If not, make it
+    if not os.path.exists(dir):
+        os.makedirs(dir, exist_ok=False)
+        log("WARNING: Data directory did not exist yet, and was created.", lvl=1)
+
     # Did we get data?
     if data is None:
         raise Exception("ERROR: Received empty data. Failed to export.")
 
-    # Gather data to write to CSV
+    # Gather data for data frame export
     to_export = []
     for d in data.values():
         for dd in d:
             to_export.append(dd['_source'])
 
-    # Export file to chosen format
-    df = hlp.format_data(pd.DataFrame(to_export), index)
+    # Convert to formatted data frame
+    df = pd.DataFrame(to_export)
+    # df = hlp.format_data(pd.DataFrame(to_export), index)
 
     # Set file name (and have it mention its type for clarity)
     new_name = name + "_" + index
@@ -401,53 +420,88 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
 # Pipeline functions (general and split up by id #
 ##################################################
 
-def pipeline(dir: str, name: str, ids: list,
-             indices=("appevents", "sessions", "notifications"),
+def pipeline(name: str, ids: list, dir: str,
+             indices=('appevents', 'sessions', 'notifications', 'logs'),
              time_range=('2018-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
-             pickle=True, csv_file=False):
-    """Get all indices sequentially."""
+             subfolder=False,
+             pickle=False, csv_file=True):
+    """
+    Get data across multiple indices. By default, they are stored in the same folder.
+
+    :param name: name of dataset
+    :param ids: IDs in dataset
+    :param dir: directory in which to store data
+    :param indices: types of data to gather (default: all)
+    :param time_range: only look in this time range
+    :param pickle: (bool) export as pickle (default = False)
+    :param csv_file: (bool) export as CSV file (default = True)
+    :return:
+    """
 
     # All data
     all_df = {}
 
     # Go over interesting indices
     for index in indices:
+
         # Get data from server
-        print("\nGetting " + index + "...\n")
-        data = fetch(doc_type=index, ids=ids, time_range=time_range)
+        log("Getting started on <" + index + ">...", lvl=1)
+        data = fetch(index=index, ids=ids, time_range=time_range)
 
         # Export data
-        print("\n\nExporting " + index + "...")
-        export_elastic(dir=dir, name=name, index=index, data=data, csv_file=csv_file, pickle=pickle)
+        log("Exporting <" + index + ">...", lvl=1)
+
+        # If requested, add to different subfolder
+        dir_new = os.path.join(dir, index) if subfolder else dir
+
+        # If this directory doesn't exist, make it
+        if not os.path.exists(dir_new):
+            os.makedirs(dir_new, exist_ok=False)
+            log("WARNING: Data directory <{dir}> did not exist yet, and was created.".format(dir=dir_new), lvl=1)
+
+        # Export to file
+        export_elastic(dir=dir_new, name=name, index=index, data=data, csv_file=csv_file, pickle=pickle)
+
+        print("")
 
         all_df[index] = data
 
-    print("\nDone!\n")
+    log("DONE!")
 
     return all_df
 
 
-def split_pipeline(dir: str, name: str, ids: list,
+def split_pipeline(ids: list, dir: str,
                    indices=('appevents', 'notifications', 'sessions', 'logs'),
                    time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
+                   subfolder=True,
                    pickle=True, csv_file=False):
-    """Same pipeline, but split up for ids."""
+    """
+    Get data across indices, but split up per ID. By default, create subfolders.
+
+    :param ids: IDs in dataset
+    :param dir: directory in which to store data
+    :param indices: types of data to gather (default: all)
+    :param time_range:
+    :param pickle:
+    :param csv_file:
+    :return:
+    """
 
     # Go over id list
     for id in ids:
-        print("###########################################")
-        print("# ID {} #".format(id))
-        print("###########################################")
+        log("Getting started on ID {}".format(id), title=True)
 
         pipeline(dir=dir,
                  name=id,
                  ids=[id],
                  indices=indices,
                  time_range=time_range,
+                 subfolder=subfolder,
                  pickle=pickle,
                  csv_file=csv_file)
 
-    print("\nAll done!\n")
+    log("\nALL DONE!\n")
 
 
 ########
@@ -457,6 +511,7 @@ def split_pipeline(dir: str, name: str, ids: list,
 if __name__ in ['__main__', 'builtins']:
     # Sup?
     hlp.hi()
+    hlp.set_param(log_level=3, data_dir='../../data')
 
     ids = ["d1002904-3a30-4515-816e-ef5b6b8ec84a",
            "273f3a6e-d724-4ed3-80e7-d9ec73b3ad24"]
@@ -474,9 +529,12 @@ if __name__ in ['__main__', 'builtins']:
 
     df = data['appevents']"""
     # ids = ids_from_server(index='appevents', time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'))
-    split_pipeline(dir="../../data/",
-                   ids=ids,
-                   name='test', indices=('appevents',),
+    split_pipeline(ids=ids,
+                   dir=hlp.DATA_DIR,
+                   indices=('appevents', 'notifications'),
                    time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
+                   subfolder=True,
                    pickle=False,
                    csv_file=True)
+
+    pipeline(name='test', ids=ids, csv_file=True, dir=hlp.DATA_DIR, subfolder=True)
