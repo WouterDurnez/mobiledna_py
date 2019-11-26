@@ -18,7 +18,7 @@ import os
 import random
 import sys
 from pprint import PrettyPrinter
-
+import base64
 import pandas as pd
 from elasticsearch import Elasticsearch
 
@@ -51,6 +51,9 @@ def connect(server=cfg.server, port=cfg.port) -> Elasticsearch:
     :param port: port to go through
     :return: Elasticsearch object
     """
+
+    server = base64.b64decode(server).decode("utf-8")
+    port = int(base64.b64decode(port).decode("utf-8"))
 
     es = Elasticsearch(
         hosts=[{'host': server, 'port': port}],
@@ -471,7 +474,7 @@ if __name__ in ['__main__', 'builtins']:
 
     df = data['appevents']"""
     # ids = ids_from_server(index='appevents', time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'))
-    split_pipeline(dir="../../../data/",
+    split_pipeline(dir="../../data/",
                    ids=ids,
                    name='test', indices=('appevents',),
                    time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
