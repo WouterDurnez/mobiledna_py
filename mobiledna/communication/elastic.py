@@ -270,6 +270,11 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
     log("There are {count} entries of the type <{index}>.".
         format(count=count_tot["count"], index=index), lvl=3)
 
+    # Make sure IDs is the list (kind of unpythonic)
+    if not isinstance(ids, list):
+        log("WARNING: ids argument was not a list (single ID?). Converting to list.", lvl=1)
+        ids = [ids]
+
     # If there's more than one ID, recursively call this function
     if len(ids) > 1:
 
@@ -435,10 +440,6 @@ def pipeline(name: str, ids: list, dir: str,
     :return:
     """
 
-    # Make sure IDs is the list (kind of unpythonic)
-    if not isinstance(ids, list):
-        raise Exception("ERROR: ids argument should be a list.")
-
     log("Begin pipeline for {number_of_ids} IDs, in time range {time_range}.".format(
         number_of_ids=len(ids),
         time_range=time_range
@@ -492,6 +493,11 @@ def split_pipeline(ids: list, dir: str,
     :return:
     """
 
+    # Make sure IDs is the list (kind of unpythonic)
+    if not isinstance(ids, list):
+        log("WARNING: ids argument was not a list (single ID?). Converting to list.", lvl=1)
+        ids = [ids]
+
     # Go over id list
     for id in ids:
         log("Getting started on ID {}".format(id), title=True)
@@ -530,4 +536,4 @@ if __name__ in ['__main__', 'builtins']:
                    pickle=False,
                    csv_file=True)'''
 
-    pipeline(name='test', indices=('appevents', 'logs'), ids=ids, csv_file=True, dir=hlp.DATA_DIR, subfolder=True)
+    pipeline(name='test', indices=('appevents', 'logs'), ids=ids[0], csv_file=True, dir=hlp.DATA_DIR, subfolder=True)
