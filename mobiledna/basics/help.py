@@ -14,7 +14,9 @@ HELPER FUNCTIONS
 """
 
 import os
+import random as rnd
 import time
+from datetime import datetime
 from pprint import PrettyPrinter
 from typing import Callable
 
@@ -58,6 +60,14 @@ index_fields = {
         'studyKey',
         'surveyId',
         'timestamp'
+    ],
+    'logs': [
+        'data_version',
+        'id',
+        'studyKey',
+        'surveyId',
+        'logging enabled',
+        'date'
     ]
 }
 
@@ -69,9 +79,10 @@ index_fields = {
 LOG_LEVEL = 3
 DATA_DIR = os.path.join(os.pardir, os.pardir, 'data')
 
-#############
-# FUNCTIONS #
-#############
+
+####################
+# Helper functions #
+####################
 
 def set_param(log_level=None, data_dir=None):
     """
@@ -150,20 +161,61 @@ def time_it(f: Callable):
     return timed
 
 
-def make_folders(*folders):
+def set_dir(*dirs):
     """
     If folders don't exist, make them.
 
-    :param folders:
+    :param dirs: directories to check/create
     :return: None
     """
 
-    for folder in folders:
-        if not os.path.exists(os.path.join(os.pardir, folder)):
-            os.makedirs(os.path.join(os.pardir, folder))
-            log("Created \'", folder, "\' folder.", lvl=3)
+    for dir in dirs:
+        if not os.path.exists(os.path.join(os.pardir, dir)):
+            os.makedirs(os.path.join(os.pardir, dir))
+            log("WARNING: Data directory <{dir}> did not exist yet, and was created.".format(dir=dir), lvl=1)
         else:
-            log("\'{}\' folder accounted for.".format(folder), lvl=3)
+            log("\'{}\' folder accounted for.".format(dir), lvl=3)
+
+
+def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore_error=False) -> tuple:
+    """
+    Takes a time range (formatted strings: '%Y-%m-%dT%H:%M:%S.%f'), and selects
+    a random interval within these boundaries of the specified duration.
+
+    :param time_range: tuple with formatted time strings
+    :param duration: timedelta specifying the duration of the new interval
+    :return: new time range
+    """
+
+    # Convert the time range strings to unix epoch format
+    start = datetime.strptime(time_range[0], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+    stop = datetime.strptime(time_range[1], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+
+    # Calculate total duration (in seconds) of original
+    difference = stop - start
+
+    # Calculate duration of new interval (in seconds)
+    duration = duration.total_seconds()
+
+    # Error handling
+    if difference < duration:
+
+        if ignore_error:
+            log("WARNING: New interval length exceeds original time range duration! Returning original time range.")
+            return time_range
+
+        else:
+            raise Exception('ERROR: New interval length exceeds original time range duration!')
+
+    # Pick random new start and stop
+    new_start = rnd.randint(int(start), int(stop - duration))
+    new_stop = new_start + duration
+
+    # Format new time range
+    new_time_range = (datetime.fromtimestamp(new_start).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3],
+                      datetime.fromtimestamp(new_stop).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3])
+
+    return new_time_range
 
 
 ############################
@@ -350,7 +402,7 @@ def load(path: str, index: str, file_type="csv", sep=";", dec='.') -> pd.DataFra
 
     # Unknown
     else:
-        raise Exception("You want me to read what now? Invalid file type! ")
+        raise Exception("ERROR: You want me to read what now? Invalid file type! ")
 
     # If there's nothing there, just go ahead and return the empty df
     if df.empty:
@@ -377,7 +429,7 @@ def get_unique(column: str, df: pd.DataFrame) -> np.ndarray:
     try:
         unique_values = df[column].unique()
     except:
-        raise Exception("Could not find variable {column} in dataframe.".format(column=column))
+        raise Exception("ERROR: Could not find variable {column} in dataframe.".format(column=column))
 
     return unique_values
 

@@ -368,7 +368,7 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
             sys.stdout.write("Entries remaining: {rmn} \r".format(rmn=remaining))
             sys.stdout.flush()
 
-        es.clear_scroll(body={'scroll_id': [scroll_id]})  # Cleanup (otherwise Scroll id remains in ES memory)
+        es.clear_scroll(body={'scroll_id': [scroll_id]})  # Cleanup (otherwise scroll ID remains in ES memory)
 
         return {ids[0]: dump}
 
@@ -391,9 +391,7 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
     """
 
     # Does the directory exist? If not, make it
-    if not os.path.exists(dir):
-        os.makedirs(dir, exist_ok=False)
-        log("WARNING: Data directory did not exist yet, and was created.", lvl=1)
+    hlp.set_dir(dir)
 
     # Did we get data?
     if data is None:
@@ -406,8 +404,7 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
             to_export.append(dd['_source'])
 
     # Convert to formatted data frame
-    df = pd.DataFrame(to_export)
-    # df = hlp.format_data(pd.DataFrame(to_export), index)
+    df = hlp.format_data(pd.DataFrame(to_export), index)
 
     # Set file name (and have it mention its type for clarity)
     new_name = name + "_" + index
@@ -438,6 +435,15 @@ def pipeline(name: str, ids: list, dir: str,
     :return:
     """
 
+    # Make sure IDs is the list (kind of unpythonic)
+    if not isinstance(ids, list):
+        raise Exception("ERROR: ids argument should be a list.")
+
+    log("Begin pipeline for {number_of_ids} IDs, in time range {time_range}.".format(
+        number_of_ids=len(ids),
+        time_range=time_range
+    ))
+
     # All data
     all_df = {}
 
@@ -455,9 +461,7 @@ def pipeline(name: str, ids: list, dir: str,
         dir_new = os.path.join(dir, index) if subfolder else dir
 
         # If this directory doesn't exist, make it
-        if not os.path.exists(dir_new):
-            os.makedirs(dir_new, exist_ok=False)
-            log("WARNING: Data directory <{dir}> did not exist yet, and was created.".format(dir=dir_new), lvl=1)
+        hlp.set_dir(dir_new)
 
         # Export to file
         export_elastic(dir=dir_new, name=name, index=index, data=data, csv_file=csv_file, pickle=pickle)
@@ -511,30 +515,19 @@ def split_pipeline(ids: list, dir: str,
 if __name__ in ['__main__', 'builtins']:
     # Sup?
     hlp.hi()
-    hlp.set_param(log_level=3, data_dir='../../data')
+    hlp.set_param(log_level=1, data_dir='../../data')
 
     ids = ["d1002904-3a30-4515-816e-ef5b6b8ec84a",
            "273f3a6e-d724-4ed3-80e7-d9ec73b3ad24"]
 
-    # Set time range
-    """data = pipeline(
-        dir="../../../data/",
-        name="191120_lfael",
-        ids=ids,
-        time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
-        pickle=False,
-        csv_file=True,
-        doc_types={"appevents"}
-    )
 
-    df = data['appevents']"""
     # ids = ids_from_server(index='appevents', time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'))
-    split_pipeline(ids=ids,
+    '''split_pipeline(ids=ids,
                    dir=hlp.DATA_DIR,
                    indices=('appevents', 'notifications'),
                    time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
                    subfolder=True,
                    pickle=False,
-                   csv_file=True)
+                   csv_file=True)'''
 
-    pipeline(name='test', ids=ids, csv_file=True, dir=hlp.DATA_DIR, subfolder=True)
+    pipeline(name='test', indices=('appevents', 'logs'), ids=ids, csv_file=True, dir=hlp.DATA_DIR, subfolder=True)
