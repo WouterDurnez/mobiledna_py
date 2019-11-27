@@ -184,6 +184,8 @@ def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore_error=Fal
 
     :param time_range: tuple with formatted time strings
     :param duration: timedelta specifying the duration of the new interval
+    :param ignore_error: (bool) if true, the function ignores durations
+                         that exceed the original length of the time range
     :return: new time range
     """
 
