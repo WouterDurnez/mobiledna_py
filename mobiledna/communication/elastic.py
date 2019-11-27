@@ -521,19 +521,14 @@ def split_pipeline(ids: list, dir: str,
 if __name__ in ['__main__', 'builtins']:
     # Sup?
     hlp.hi()
-    hlp.set_param(log_level=1, data_dir='../../data')
+    hlp.set_param(log_level=2, data_dir='../../data')
 
     ids = ["d1002904-3a30-4515-816e-ef5b6b8ec84a",
            "273f3a6e-d724-4ed3-80e7-d9ec73b3ad24"]
 
+    time_range = ('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000')
 
-    # ids = ids_from_server(index='appevents', time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'))
-    '''split_pipeline(ids=ids,
-                   dir=hlp.DATA_DIR,
-                   indices=('appevents', 'notifications'),
-                   time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
-                   subfolder=True,
-                   pickle=False,
-                   csv_file=True)'''
-
-    pipeline(name='test', indices=('appevents', 'logs'), ids=ids[0], csv_file=True, dir=hlp.DATA_DIR, subfolder=True)
+    for id in ids:
+        new_time_range = hlp.split_time_range(time_range=time_range, duration=pd.Timedelta(days=28))
+        log("New time range: {}".format(new_time_range), lvl=2)
+        fetch(index='appevents', ids=id, time_range=new_time_range)
