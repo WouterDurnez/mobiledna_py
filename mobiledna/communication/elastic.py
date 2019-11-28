@@ -422,6 +422,7 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
 # Pipeline functions (general and split up by id #
 ##################################################
 
+@hlp.time_it
 def pipeline(name: str, ids: list, dir: str,
              indices=('appevents', 'sessions', 'notifications', 'logs'),
              time_range=('2018-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
@@ -476,6 +477,7 @@ def pipeline(name: str, ids: list, dir: str,
     return all_df
 
 
+@hlp.time_it
 def split_pipeline(ids: list, dir: str,
                    indices=('appevents', 'notifications', 'sessions', 'logs'),
                    time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),

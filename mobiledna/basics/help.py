@@ -331,7 +331,7 @@ def add_duration(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False):
+def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, parquet=False):
     """
     Wrapper function to save mobileDNA data frames.
 
@@ -340,6 +340,7 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False):
     :param name: name of the file
     :param csv_file: save in CSV format (bool)
     :param pickle: save in pickle format (bool)
+    :param parquet: save in parquet format (bool)
     :return: /
     """
 
@@ -372,7 +373,7 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False):
             log("WARNING: Failed to store data frame! {e}".format(e=e), lvl=1)
 
 
-def load(path: str, index: str, file_type="csv", sep=";", dec='.') -> pd.DataFrame:
+def load(path: str, index: str, file_type='csv', sep=';', dec='.') -> pd.DataFrame:
     """
     Wrapper function to load mobileDNA data frames.
 
@@ -391,16 +392,19 @@ def load(path: str, index: str, file_type="csv", sep=";", dec='.') -> pd.DataFra
     # Load data frame, depending on file type
 
     # CSV
-    if file_type == "csv":
+    if file_type == 'csv':
         df = pd.read_csv(filepath_or_buffer=path,
                          # usecols=,
-                         sep=sep, error_bad_lines=False)
+                         sep=sep, decimal=dec,
+                         error_bad_lines=False)
 
     # Pickle
-    elif file_type == "pickle":
+    elif file_type == 'pickle':
         df = pd.read_pickle(path=path)
 
-    # ... add new file types here (e.g., parquet?)
+    # Parquet
+    elif file_type == 'parquet':
+        df = pd.read_parquet(path=path)
 
     # Unknown
     else:
