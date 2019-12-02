@@ -31,6 +31,7 @@ setup(name='mobiledna',
           'pandas',
           'tqdm',
           'matplotlib',
-          'elasticsearch<=6.3.1'
+          'elasticsearch<=6.3.1',
+          'pyarrow'
       ],
       zip_safe=False)

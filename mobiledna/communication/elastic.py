@@ -392,6 +392,7 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
     :param data: ElasticSearch dump
     :param pickle: would you like that pickled, Ma'am? (bool)
     :param csv_file: export as CSV file (bool, default)
+    :param parquet: export as parquet file (bool)
     :return: /
     """
 
@@ -415,7 +416,7 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
     new_name = name + "_" + index
 
     # Save the data frame
-    hlp.save(df=df, dir=dir, name=new_name, csv_file=csv_file, pickle=pickle)
+    hlp.save(df=df, dir=dir, name=new_name, csv_file=csv_file, pickle=pickle, parquet=parquet)
 
 
 ##################################################
@@ -427,7 +428,7 @@ def pipeline(name: str, ids: list, dir: str,
              indices=('appevents', 'sessions', 'notifications', 'logs'),
              time_range=('2018-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
              subfolder=False,
-             pickle=False, csv_file=True):
+             pickle=False, csv_file=True, parquet=False):
     """
     Get data across multiple indices. By default, they are stored in the same folder.
 
@@ -466,7 +467,8 @@ def pipeline(name: str, ids: list, dir: str,
         hlp.set_dir(dir_new)
 
         # Export to file
-        export_elastic(dir=dir_new, name=name, index=index, data=data, csv_file=csv_file, pickle=pickle)
+        export_elastic(dir=dir_new, name=name, index=index, data=data, csv_file=csv_file, pickle=pickle,
+                       parquet=parquet)
 
         print("")
 

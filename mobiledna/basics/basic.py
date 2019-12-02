@@ -23,9 +23,9 @@ import mobiledna.basics.help as hlp
 pp = PrettyPrinter(indent=4)
 
 
-########
-# Core #
-########
+##################
+# Appevents core #
+##################
 
 @hlp.time_it
 def days(df: pd.DataFrame, overall=False) -> pd.Series:
@@ -36,6 +36,9 @@ def days(df: pd.DataFrame, overall=False) -> pd.Series:
     :param overall: (bool) across dataset (True) or per ID (False, default)
     :return: day count (Series)
     """
+
+    # Check data frame type
+    hlp.check_index(df=df, index='appevents')
 
     # Get date portion of timestamp and factorize (make it more efficient)
     df['date'] = pd.to_datetime(df['startTimeMillis'], unit='ms').dt.date
@@ -50,11 +53,16 @@ def days(df: pd.DataFrame, overall=False) -> pd.Series:
 
 @hlp.time_it
 def events(df: pd.DataFrame, overall=False) -> pd.Series:
-    """Count number of appevents (per ID or overall)
+    """
+    Count number of appevents (per ID or overall)
 
     :param df: Appevents data frame
     :param overall: (bool) across dataset (True) or per ID (False, default)
-    :return: Count (Series)."""
+    :return: Count (Series).
+    """
+
+    # Check data frame type
+    hlp.check_index(df=df, index='appevents')
 
     # If we're looking across the whole dataset, just return the length
     if overall:
@@ -66,11 +74,16 @@ def events(df: pd.DataFrame, overall=False) -> pd.Series:
 
 @hlp.time_it
 def duration(df: pd.DataFrame, overall=False) -> pd.Series:
-    """Count number of appevents (per ID or overall)
+    """
+    Count number of appevents (per ID or overall)
 
     :param df: Appevents data frame
     :param overall: (bool) across dataset (True) or per ID (False, default)
-    :return: Count (Series)."""
+    :return: Count (Series).
+    """
+
+    # Check data frame type
+    hlp.check_index(df=df, index='appevents')
 
     # If we're looking across the whole dataset, just return the length
     if overall:
@@ -87,5 +100,5 @@ if __name__ == "__main__":
     df = hlp.load(path=path, index='appevents', file_type='csv')
 
     days = days(df, overall=True)
-    events = events(df, True)
+    events = events(df, False)
     duration = duration(df, True)

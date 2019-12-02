@@ -225,8 +225,10 @@ def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore_error=Fal
 ############################
 
 def hi():
-    """Say hello. (It's stupid, I know.)
-    If there's anything to initialize, do so here."""
+    """
+    Say hello. (It's stupid, I know.)
+    If there's anything to initialize, do so here.
+    """
 
     print("\n")
     print("    __  ___      __    _ __     ____  _   _____ ")
@@ -248,6 +250,46 @@ def hi():
 ########################
 # Data frame functions #
 ########################
+
+def check_index(df: pd.DataFrame, index: str) -> bool:
+    """
+    Checks if a data frame is indeed of the right index type.
+
+    :param df: data frame that will be checked
+    :param index: type of data that is expected
+    :return: (bool) checks out (True) or doesn't (False)
+    """
+
+    # Check index argument
+    if index not in indices:
+        raise Exception(
+            "ERROR: When checking index type, please enter valid index ('appevents','notifications','logs', or 'sessions'.")
+
+    unique_columns = {
+        'appevents': 'startTimeMillis',
+        'notifications': 'time',
+        'sessions': 'timestamp',
+        'logs': 'date'
+    }
+
+    # Check what type of data we're dealing with in reality
+    true_index = None
+
+    # Go over unique columns, and check if they're in our data frame
+    for unique_key in unique_columns.keys():
+
+        # If they are, that's the type of data frame we're dealing with
+        if unique_columns[unique_key] in df:
+            true_index = unique_key
+            break
+
+    # If our data type is not what we expected, throw an error
+    if true_index != index:
+        raise Exception("ERROR: Unexpected index! Expected <{expected}>, but got <{true}>.".
+                        format(expected=index, true=true_index))
+
+
+
 
 def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
     """
@@ -331,6 +373,27 @@ def add_duration(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def get_unique(column: str, df: pd.DataFrame) -> np.ndarray:
+    """
+    Get list of unique column values in given data frame.
+
+    :param column: column to sift through
+    :param df: data frame to look in
+    :return: unique values in given column
+    """
+
+    try:
+        unique_values = df[column].unique()
+    except:
+        raise Exception("ERROR: Could not find variable {column} in dataframe.".format(column=column))
+
+    return unique_values
+
+
+#####################
+# Storage functions #
+#####################
+
 def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, parquet=False):
     """
     Wrapper function to save mobileDNA data frames.
@@ -353,12 +416,11 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
         try:
 
             df.to_csv(path_or_buf=path + ".csv", sep=";", decimal='.')
-
             log("Saved data frame to {}".format(path + ".csv_file"))
 
         except Exception as e:
 
-            log("Failed to store data frame! - ", e, lvl=1)
+            log("ERROR: Failed to store data frame as CSV! {e}".format(e=e), lvl=1)
 
     # Store to pickle
     if pickle:
@@ -370,16 +432,28 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
 
         except Exception as e:
 
-            log("WARNING: Failed to store data frame! {e}".format(e=e), lvl=1)
+            log("ERROR: Failed to pickle data frame! {e}".format(e=e), lvl=1)
+
+    # Store to parquet
+    if parquet:
+
+        try:
+
+            df.to_parquet(fname=path + ".snappy.parquet", engine='auto', compression='snappy')
+            log("Saved data frame to {}".format(path + ".snappy.parquet"))
+
+        except Exception as e:
+
+            log("ERROR: Failed to store data frame as parquet! {e}".format(e=e), lvl=1)
 
 
-def load(path: str, index: str, file_type='csv', sep=';', dec='.') -> pd.DataFrame:
+def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataFrame:
     """
     Wrapper function to load mobileDNA data frames.
 
     :param path: location of data frame
     :param index: type of mobileDNA data
-    :param file_type: file type (currently: cvs or pickle).
+    :param file_type: file type (default: infer from path, other options: pickle, csv, or parquet)
     :param sep: field separator
     :param dec: decimal symbol
     :return: data frame
@@ -390,6 +464,16 @@ def load(path: str, index: str, file_type='csv', sep=';', dec='.') -> pd.DataFra
         raise Exception("Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', or 'logs'.")
 
     # Load data frame, depending on file type
+    if file_type == 'infer':
+
+        # Get extension
+        file_type = path.split('.')[-1]
+
+        # Only allow the following extensions
+        if file_type not in {'csv', 'pickle', 'pkl', 'parquet', 'parquet'}:
+            raise Exception("ERROR: Could not infer file type!")
+
+        log("Recognized file type as <{type}>.".format(type=file_type), lvl=3)
 
     # CSV
     if file_type == 'csv':
@@ -399,12 +483,12 @@ def load(path: str, index: str, file_type='csv', sep=';', dec='.') -> pd.DataFra
                          error_bad_lines=False)
 
     # Pickle
-    elif file_type == 'pickle':
+    elif file_type == 'pickle' or file_type == 'pkl':
         df = pd.read_pickle(path=path)
 
     # Parquet
     elif file_type == 'parquet':
-        df = pd.read_parquet(path=path)
+        df = pd.read_parquet(path=path, engine='auto')
 
     # Unknown
     else:
@@ -423,21 +507,6 @@ def load(path: str, index: str, file_type='csv', sep=';', dec='.') -> pd.DataFra
     return df
 
 
-def get_unique(column: str, df: pd.DataFrame) -> np.ndarray:
-    """
-    Get list of unique column values in given data frame.
-
-    :param column: column to sift through
-    :param df: data frame to look in
-    :return: unique values in given column
-    """
-
-    try:
-        unique_values = df[column].unique()
-    except:
-        raise Exception("ERROR: Could not find variable {column} in dataframe.".format(column=column))
-
-    return unique_values
 
 
 ########
@@ -449,5 +518,15 @@ if __name__ in ['__main__', 'builtins']:
     hi()
 
     df = load(path="../../../data/191120_lfael_appevents.csv", index='appevents')
+    save(df=df, dir=DATA_DIR, name='test', csv_file=True, parquet=True)
+
+    df_csv = load(DATA_DIR + '/test.csv', index='appevents')
+    df_parquet = load(DATA_DIR + '/test.snappy.parquet', index='appevents')
 
     df.info(verbose=False)
+    df_csv.info(verbose=False)
+    df_parquet.info(verbose=False)
+
+    print(check_index(df, 'appevents'))
+    print(check_index(df, 'notifications'))
+    print(check_index(df, 'something'))
