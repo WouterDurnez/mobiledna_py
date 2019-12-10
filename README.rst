@@ -84,7 +84,6 @@ Communication module
 
 Connects to the ES server and return an ES object. Make sure you have the correct version of the :code:`elasticsearch` package installed. This functionality breaks with updates beyond the recommended version. Requires a **config file** to work. Returns an Elasticsearch object.
 
-------------
 
 .. code-block:: python
 
@@ -92,7 +91,6 @@ Connects to the ES server and return an ES object. Make sure you have the correc
 
 Reads a list of mobileDNA IDs from a CSV file, containing a single column. Returns them as a list.
 
-------------
 
 .. code-block:: python
 
@@ -100,11 +98,10 @@ Reads a list of mobileDNA IDs from a CSV file, containing a single column. Retur
 
 Extracts IDs from the server that have logged _something_ in the given time range, in the given index. Returns them as a dictionary (keys: IDs, values: doc_counts).
 
+
+
+Basic module
 ------------
-
-
-2. basic.py
-#############
 
 
 Development
