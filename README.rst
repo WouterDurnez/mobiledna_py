@@ -90,7 +90,9 @@ Reads a list of mobileDNA IDs from a CSV file, containing a single column. Retur
 
 Extracts IDs from the server that have logged _something_ in the given time range, in the given index. Returns them as a dictionary (keys: IDs, values: doc_counts).
 
+.. function:: connect(server=cfg.server, port=cfg.port) -> Elasticsearch
 
+Test
 
 2. basic.py
 #############
