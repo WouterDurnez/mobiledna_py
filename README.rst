@@ -84,7 +84,7 @@ Communication module
 
 Connects to the ES server and return an ES object. Make sure you have the correct version of the :code:`elasticsearch` package installed. This functionality breaks with updates beyond the recommended version.
 
-.. currentmodule:: communication
+.. currentmodule:: mobiledna.communication.elastic
 .. autofunction:: connect
 
 
