@@ -5,7 +5,7 @@
 
 
 
-**mobileDNA** is an open-source statistical package written in Python 3. It can be used in combination with log stemming from the mobileDNA platform. The package contains the following modules:
+**mobileDNA** is an open-source statistical package written in Python 3. It can be used to analyze data stemming from the mobileDNA platform. The package contains the following modules:
 
 1. communication
 
@@ -16,8 +16,7 @@
 4. dashboards
 
 
-
-The package is intended for users who like to delve into the raw log data that is provided through the mobileDNA logging application. It can be used and expanded on at will.
+The package is intended for users who like to delve into the raw log data that is provided through the mobileDNA logging application. It can be used and expanded on at will. Go bonkers.
 
 
 Questions, comments, or just need help?
