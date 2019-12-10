@@ -20,8 +20,8 @@
 The package is intended for users who like to delve into the raw log data that is provided through the mobileDNA logging application. It can be used and expanded on at will.
 
 
-Chat
-====
+Questions, comments, or just need help?
+=======================================
 
 If you have questions, please address `Wouter Durnez <Wouter.Durnez@UGent.be>`_ or `Kyle Van Gaeveren <Kyle.VanGaeveren@UGent.be>`_.
 
@@ -86,8 +86,7 @@ Connects to the ES server and return an ES object. Make sure you have the correc
 
 Reads a list of mobileDNA IDs from a CSV file, containing a single column. Returns them as a list.
 
-:code:`ids_from_server(index="appevents",
-                    time_range=('2018-01-01T00:00:00.000', '2030-01-01T00:00:00.000')) -> dict:`
+:code:`ids_from_server(index="appevents", time_range=('2018-01-01T00:00:00.000', '2030-01-01T00:00:00.000')) -> dict:`
 
 Extracts IDs from the server that have logged _something_ in the given time range, in the given index. Returns them as a dictionary (keys: IDs, values: doc_counts).
 
