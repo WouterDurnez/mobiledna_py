@@ -17,7 +17,7 @@
 
 
 
-The package is intended for users who like to get hands-on with their data analysis. It can be used and expanded on at will.
+The package is intended for users who like to delve into the raw log data that is provided through the mobileDNA logging application. It can be used and expanded on at will.
 
 
 Chat
@@ -76,18 +76,25 @@ Communication module
 1. elastic.py
 #############
 
-.. warning:: Don't touch this module if you don't have access to the ES server!
+**Warning:** Don't touch this module if you don't have access to the ES server!
 
-.. code-block:: python
+:code:`connect(server=cfg.server, port=cfg.port) -> Elasticsearch`
 
-  connect(server=cfg.server, port=cfg.port) -> Elasticsearch
+Connects to the ES server and return an ES object. Make sure you have the correct version of the :code:`elasticsearch` package installed. This functionality breaks with updates beyond the recommended version. Requires a **config file** to work. Returns an Elasticsearch object.
 
-Connects to the ES server and return an ES object. Make sure you have the correct version of the :code:`elasticsearch` package installed. This functionality breaks with updates beyond the recommended version.
+:code:`ids_from_file(dir: str, file_name='ids', file_type='csv') -> list`
 
-.. currentmodule:: mobiledna.communication.elastic
-.. autofunction:: connect
+Reads a list of mobileDNA IDs from a CSV file, containing a single column. Returns them as a list.
+
+:code:`ids_from_server(index="appevents",
+                    time_range=('2018-01-01T00:00:00.000', '2030-01-01T00:00:00.000')) -> dict:`
+
+Extracts IDs from the server that have logged _something_ in the given time range, in the given index. Returns them as a dictionary (keys: IDs, values: doc_counts).
 
 
+
+2. basic.py
+#############
 
 
 Development
