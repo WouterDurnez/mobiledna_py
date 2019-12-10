@@ -3,6 +3,8 @@
 .. figure::  https://github.ugent.be/raw/imec-mict-UGent/mobiledna_py/master/docs/pictures/logo_mobiledna.png?token=AAABYY2K5VSAUAYEQP3BHPS57DRFU
    :align:   center
 
+
+
 **mobileDNA** is an open-source statistical package written in Python 3. It can be used in combination with log stemming from the mobileDNA platform. The package contains the following modules:
 
 1. communication
@@ -17,13 +19,6 @@
 
 The package is intended for users who like to get hands-on with their data analysis. It can be used and expanded on at will.
 
-For example, the :code:`ttest_ind` function of SciPy returns only the T-value and the p-value. By contrast,
-the :code:`ttest` function of Pingouin returns the T-value, the p-value, the degrees of freedom, the effect size (Cohen's d), the 95% confidence intervals of the difference in means, the statistical power and the Bayes Factor (BF10) of the test.
-
-Documentation
-=============
-
-- `Link to documentation <https://pingouin-stats.org/index.html>`_
 
 Chat
 ====
@@ -39,26 +34,18 @@ Dependencies
 
 The main dependencies are :
 
-          'numpy',
-          'pandas',
-          'tqdm',
-          'matplotlib',
-          'elasticsearch<=6.3.1',
-          'pyarrow'
-
-* NumPy
-* Pandas
-* TQDM
-* MatPlotLib
-* ElasticSearch (6.3.X)
-* PyArrow
-* CSV
+  * NumPy
+  * Pandas
+  * TQDM
+  * MatPlotLib
+  * ElasticSearch (6.3.X)
+  * PyArrow
+  * CSV
 
 In addition, some functions may require :
 
-* Seaborn
-* PPrint
-* Mpmath
+  * Seaborn
+  * PPrint
 
 mobileDNA is a Python 3 package and is currently tested for Python 3.6 and 3.7. mobileDNA is not expected to work with Python 2.7 and below.
 
@@ -97,7 +84,7 @@ Communication module
 
 Connects to the ES server and return an ES object. Make sure you have the correct version of the :code:`elasticsearch` package installed. This functionality breaks with updates beyond the recommended version.
 
-.. currentmodule:: communication.elastic
+.. currentmodule:: elastic
 .. autofunction:: connect
 
 
