@@ -19,6 +19,7 @@ from pprint import PrettyPrinter
 import pandas as pd
 
 import mobiledna.basics.help as hlp
+from mobiledna.basics.help import check_index
 
 pp = PrettyPrinter(indent=4)
 
@@ -28,9 +29,9 @@ pp = PrettyPrinter(indent=4)
 ##################
 
 @hlp.time_it
-def days(df: pd.DataFrame, overall=False) -> pd.Series:
+def count_days(df: pd.DataFrame, overall=False) -> pd.Series:
     """
-    Count number of days for which logs exist (per ID or overall)
+    Count number of count_days for which logs exist (per ID or overall)
 
     :param df: appevents data frame
     :param overall: (bool) across dataset (True) or per ID (False, default)
@@ -38,7 +39,7 @@ def days(df: pd.DataFrame, overall=False) -> pd.Series:
     """
 
     # Check data frame type
-    hlp.check_index(df=df, index='appevents')
+    check_index(df=df, index='appevents')
 
     # Get date portion of timestamp and factorize (make it more efficient)
     df['date'] = pd.to_datetime(df['startTimeMillis'], unit='ms').dt.date
@@ -52,17 +53,17 @@ def days(df: pd.DataFrame, overall=False) -> pd.Series:
 
 
 @hlp.time_it
-def events(df: pd.DataFrame, overall=False) -> pd.Series:
+def count_events(df: pd.DataFrame, overall=False) -> pd.Series:
     """
     Count number of appevents (per ID or overall)
 
-    :param df: Appevents data frame
+    :param df: appevents data frame
     :param overall: (bool) across dataset (True) or per ID (False, default)
-    :return: Count (Series).
+    :return: count of appevents (Series).
     """
 
     # Check data frame type
-    hlp.check_index(df=df, index='appevents')
+    check_index(df=df, index='appevents')
 
     # If we're looking across the whole dataset, just return the length
     if overall:
@@ -73,32 +74,98 @@ def events(df: pd.DataFrame, overall=False) -> pd.Series:
 
 
 @hlp.time_it
-def duration(df: pd.DataFrame, overall=False) -> pd.Series:
+def active_screen_time(df: pd.DataFrame, overall=False) -> pd.Series:
     """
-    Count number of appevents (per ID or overall)
+    Count screen time spent on appevent activity (per ID or overall)
 
-    :param df: Appevents data frame
+    :param df: appevents data frame
     :param overall: (bool) across dataset (True) or per ID (False, default)
-    :return: Count (Series).
+    :return: appevent screen time (Series).
     """
 
     # Check data frame type
-    hlp.check_index(df=df, index='appevents')
+    check_index(df=df, index='appevents')
+
+    # Check if duration column is there...
+    if 'duration' not in df:
+        # ...if it's not, add it
+        df = hlp.add_duration(df=df)
 
     # If we're looking across the whole dataset, just return the length
     if overall:
         return pd.Series(df.duration.sum(), index=['overall'])
 
-    # ...else, get total duration per ID
-    return df.groupby(['id']).duration.sum()
+    # ...else, get total active screen time per ID
+    return df.groupby(by=['id']).duration.sum()
 
+
+#################
+# Sessions core #
+#################
+
+@hlp.time_it
+def count_sessions(df: pd.DataFrame, overall=False) -> pd.Series:
+    """
+    Count number of sessions (per ID or overall)
+
+    :param df: sessions data frame
+    :param overall: (bool) across dataset (True) or per ID (False, default)
+    :return: count of sessions (Series)
+    """
+
+    # Check data frame type
+    check_index(df=df, index='sessions')
+
+    # Remove rows with deactivation
+    df = df.loc[df['session on'] == True]
+
+    # If we're looking across the whole dataset, just return the length
+    if overall:
+        return pd.Series(len(df), index=['overall'])
+
+    # ...else, get number of rows per ID
+    return df.id.value_counts()
+
+
+@hlp.time_it
+def screen_time(df: pd.DataFrame, overall=False) -> pd.Series:
+    # Check data frame type
+    check_index(df=df, index='sessions')
+
+    # Check if duration column is there...
+    if 'duration' not in df:
+        # ...if it's not, add it
+        df = hlp.add_duration(df=df)
+
+    # If we're looking across the whole dataset, just return the length
+    if overall:
+        return pd.Series(df.duration.sum(), index=['overall'])
+
+    # ...else, get total active screen time per ID
+    return df.groupby(by=['id']).duration.sum()
+
+
+########
+# MAIN #
+########
 
 if __name__ == "__main__":
     hlp.hi()
-    path = os.path.join(hlp.DATA_DIR, 'appevents', 'test_appevents.csv')
+    path_ses = os.path.join(hlp.DATA_DIR, 'test_sessions.csv')
+    path_app = os.path.join(hlp.DATA_DIR, 'test_appevents.csv')
+    path_not = os.path.join(hlp.DATA_DIR, 'test_notifications.csv')
 
-    df = hlp.load(path=path, index='appevents', file_type='csv')
+    '''df = hlp.load(path=path, index='appevents', file_type='csv')
 
-    days = days(df, overall=True)
-    events = events(df, False)
-    duration = duration(df, True)
+    count_days = count_days(df, overall=True)
+    count_events = count_events(df, False)
+    duration = active_screen_time(df, True)'''
+
+    ses = hlp.load(path=path_ses, index='sessions')
+    app = hlp.load(path=path_app, index='appevents')
+    noti = hlp.load(path=path_not, index='notifications')
+
+    test = screen_time(ses)
+
+    a = active_screen_time(df=app)
+    s = screen_time(df=ses)

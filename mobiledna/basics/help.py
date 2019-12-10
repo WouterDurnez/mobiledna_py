@@ -24,8 +24,16 @@ import numpy as np
 import pandas as pd
 
 pp = PrettyPrinter(indent=4)
-indices = {'notifications', 'appevents', 'sessions', 'logs'}
-index_fields = {
+
+####################
+# GLOBAL VARIABLES #
+####################
+
+# Set log level (1 = only top level log messages -> 3 = all log messages)
+LOG_LEVEL = 3
+DATA_DIR = os.path.join(os.pardir, os.pardir, 'data')
+INDICES = {'notifications', 'appevents', 'sessions', 'logs'}
+INDEX_FIELDS = {
     'notifications': [
         'application',
         'data_version',
@@ -41,7 +49,8 @@ index_fields = {
         'application',
         'battery',
         'data_version',
-        'endTimeMillis',
+        'startTime',
+        'endTime',
         'id',
         'latitude',
         'longitude',
@@ -49,13 +58,15 @@ index_fields = {
         'notification',
         'notificationId',
         'session',
-        'startTimeMillis',
         'studyKey',
         'surveyId'
     ],
     'sessions': [
+        'startTime',
+        'endTime',
         'data_version',
         'id',
+        'sessionID',
         'session on',
         'studyKey',
         'surveyId',
@@ -70,14 +81,6 @@ index_fields = {
         'date'
     ]
 }
-
-####################
-# GLOBAL VARIABLES #
-####################
-
-# Set log level (1 = only top level log messages -> 3 = all log messages)
-LOG_LEVEL = 3
-DATA_DIR = os.path.join(os.pardir, os.pardir, 'data')
 
 
 ####################
@@ -177,13 +180,22 @@ def set_dir(*dirs):
             log("\'{}\' folder accounted for.".format(dir), lvl=3)
 
 
+##################
+# Time functions #
+##################
+
+def to_timestamp(df: pd.DataFrame, columns: list):
+    for column in columns:
+        df[column] = df[column].astype(int) / 10 ** 9
+
+
 def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore_error=False) -> tuple:
     """
     Takes a time range (formatted strings: '%Y-%m-%dT%H:%M:%S.%f'), and selects
-    a random interval within these boundaries of the specified duration.
+    a random interval within these boundaries of the specified active_screen_time.
 
     :param time_range: tuple with formatted time strings
-    :param duration: timedelta specifying the duration of the new interval
+    :param duration: timedelta specifying the active_screen_time of the new interval
     :param ignore_error: (bool) if true, the function ignores durations
                          that exceed the original length of the time range
     :return: new time range
@@ -193,21 +205,22 @@ def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore_error=Fal
     start = datetime.strptime(time_range[0], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
     stop = datetime.strptime(time_range[1], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
 
-    # Calculate total duration (in seconds) of original
+    # Calculate total active_screen_time (in seconds) of original
     difference = stop - start
 
-    # Calculate duration of new interval (in seconds)
+    # Calculate active_screen_time of new interval (in seconds)
     duration = duration.total_seconds()
 
     # Error handling
     if difference < duration:
 
         if ignore_error:
-            log("WARNING: New interval length exceeds original time range duration! Returning original time range.")
+            log(
+                "WARNING: New interval length exceeds original time range active_screen_time! Returning original time range.")
             return time_range
 
         else:
-            raise Exception('ERROR: New interval length exceeds original time range duration!')
+            raise Exception('ERROR: New interval length exceeds original time range active_screen_time!')
 
     # Pick random new start and stop
     new_start = rnd.randint(int(start), int(stop - duration))
@@ -251,7 +264,7 @@ def hi():
 # Data frame functions #
 ########################
 
-def check_index(df: pd.DataFrame, index: str) -> bool:
+def check_index(df: pd.DataFrame, index: str, ignore_error=False) -> bool:
     """
     Checks if a data frame is indeed of the right index type.
 
@@ -261,14 +274,14 @@ def check_index(df: pd.DataFrame, index: str) -> bool:
     """
 
     # Check index argument
-    if index not in indices:
+    if index not in INDICES:
         raise Exception(
             "ERROR: When checking index type, please enter valid index ('appevents','notifications','logs', or 'sessions'.")
 
     unique_columns = {
-        'appevents': 'startTimeMillis',
+        'appevents': 'session',
         'notifications': 'time',
-        'sessions': 'timestamp',
+        'sessions': 'session on',
         'logs': 'date'
     }
 
@@ -283,12 +296,16 @@ def check_index(df: pd.DataFrame, index: str) -> bool:
             true_index = unique_key
             break
 
-    # If our data type is not what we expected, throw an error
+    # If our data type is not what we expected, return False (or throw an error)
     if true_index != index:
-        raise Exception("ERROR: Unexpected index! Expected <{expected}>, but got <{true}>.".
-                        format(expected=index, true=true_index))
+        if ignore_error:
+            return False
+        else:
+            raise Exception("ERROR: Unexpected index! Expected <{expected}>, but got <{true}>.".
+                            format(expected=index, true=true_index))
 
-
+    # ...else return that check is A-OK
+    return True
 
 
 def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
@@ -302,7 +319,7 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
     """
 
     # Check if index is valid
-    if index not in indices:
+    if index not in INDICES:
         raise Exception("ERROR: Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', or 'logs'.")
 
     elif index == 'appevents':
@@ -311,8 +328,8 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
         df.data_version = pd.to_numeric(df.data_version, downcast='float')
 
         # Downcast timestamps
-        df.startTimeMillis = pd.to_numeric(df.startTimeMillis, downcast='unsigned')
-        df.endTimeMillis = pd.to_numeric(df.endTimeMillis, downcast='unsigned')
+        df.startTime = pd.to_numeric(pd.to_datetime(df.startTime).astype(int) / 10 ** 9, downcast='unsigned')
+        df.endTime = pd.to_numeric(pd.to_datetime(df.endTime).astype(int) / 10 ** 9, downcast='unsigned')
 
         # Downcast lat/long
         df.latitude = pd.to_numeric(df.latitude, downcast='float')
@@ -335,7 +352,23 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
 
     elif index == 'sessions':
 
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        # Convert to timestamp
+        df['timestamp'] = pd.to_datetime(df['timestamp']).astype(int) / 10 ** 9
+
+        # Sort data frame
+        df.sort_values(by=['id', 'timestamp'], inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        df.rename(columns={'timestamp': 'startTime'}, inplace=True)
+
+        # Add end timestamp
+        df['endTime'] = df.groupby('id')['startTime'].shift(-1)
+        df['session off'] = df.groupby('id')['session on'].shift(-1)
+
+        # Add ID which links with appevents index
+        df['sessionID'] = pd.to_numeric(df['startTime'].astype(int) - 3600, downcast='unsigned')
+
+        # Filter out bogus rows
+        df = df.loc[(df['session on'] == True) & (df['session off'] == False)]
 
     elif index == 'logs':
 
@@ -343,7 +376,7 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
 
     for col in df.columns:
 
-        if col.startswith('Unnamed') or col not in index_fields[index]:
+        if col.startswith('Unnamed') or col not in INDEX_FIELDS[index]:
             df.drop(labels=[col], axis=1, inplace=True)
 
     return df
@@ -357,12 +390,14 @@ def add_duration(df: pd.DataFrame) -> pd.DataFrame:
     :return: modified data frame
     """
 
-    if 'startTimeMillis' not in df.columns or \
-            'endTimeMillis' not in df.columns:
+    # Check if data contains necessary columns
+    if 'startTime' not in df.columns or \
+            'endTime' not in df.columns:
         raise Exception("ERROR: Necessary columns missing!")
 
+    # Calculate duration (in seconds)
     try:
-        df['duration'] = df['endTimeMillis'] - df['startTimeMillis']
+        df['duration'] = df['endTime'] - df['startTime']
     except:
         raise Exception("ERROR: Failed to calculate duration!")
 
@@ -447,7 +482,7 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
             log("ERROR: Failed to store data frame as parquet! {e}".format(e=e), lvl=1)
 
 
-def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataFrame:
+def load(path: str, index: str, file_type='infer', sep=';', dec='.', format=False) -> pd.DataFrame:
     """
     Wrapper function to load mobileDNA data frames.
 
@@ -456,11 +491,12 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
     :param file_type: file type (default: infer from path, other options: pickle, csv, or parquet)
     :param sep: field separator
     :param dec: decimal symbol
+    :param format: format data frame to save space (watch out for redundant formatting!)
     :return: data frame
     """
 
     # Check if index is valid
-    if index not in indices:
+    if index not in INDICES:
         raise Exception("Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', or 'logs'.")
 
     # Load data frame, depending on file type
@@ -470,7 +506,7 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
         file_type = path.split('.')[-1]
 
         # Only allow the following extensions
-        if file_type not in {'csv', 'pickle', 'pkl', 'parquet', 'parquet'}:
+        if file_type not in ['csv', 'pickle', 'pkl', 'parquet']:
             raise Exception("ERROR: Could not infer file type!")
 
         log("Recognized file type as <{type}>.".format(type=file_type), lvl=3)
@@ -498,15 +534,22 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
     if df.empty:
         return df
 
-    # Go over different indices and format columns where necessary
-    df = format_data(df=df, index=index)
+    # Drop 'Unnamed' columns
+    for col in df.columns:
 
-    if 'duration' not in df:
+        if col.startswith('Unnamed'):
+            df.drop(labels=[col], axis=1, inplace=True)
+
+    # If format is requested, go over different INDICES and format columns where necessary
+    if format:
+        df = format_data(df=df, index=index)
+
+    if 'duration' not in df and (
+            check_index(df=df, index='appevents', ignore_error=True) or
+            check_index(df=df, index='sessions', ignore_error=True)):
         add_duration(df)
 
     return df
-
-
 
 
 ########
@@ -517,16 +560,4 @@ if __name__ in ['__main__', 'builtins']:
     # Howdy
     hi()
 
-    df = load(path="../../../data/191120_lfael_appevents.csv", index='appevents')
-    save(df=df, dir=DATA_DIR, name='test', csv_file=True, parquet=True)
-
-    df_csv = load(DATA_DIR + '/test.csv', index='appevents')
-    df_parquet = load(DATA_DIR + '/test.snappy.parquet', index='appevents')
-
-    df.info(verbose=False)
-    df_csv.info(verbose=False)
-    df_parquet.info(verbose=False)
-
-    print(check_index(df, 'appevents'))
-    print(check_index(df, 'notifications'))
-    print(check_index(df, 'something'))
+    df = load(path=os.path.join(DATA_DIR, "test_appevents.csv"), index='appevents')

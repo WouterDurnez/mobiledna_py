@@ -29,8 +29,8 @@ from mobiledna.basics.help import log
 
 # Globals
 pp = PrettyPrinter(indent=4)
-indices = hlp.indices
-fields = hlp.index_fields
+indices = hlp.INDICES
+fields = hlp.INDEX_FIELDS
 time_var = {
     'appevents': 'startTime',
     'notifications': 'time',
@@ -202,7 +202,7 @@ def common_ids(index="appevents",
     ids = {}
     id_sets = {}
 
-    # Go over most important indices (fuck logs, they're useless).
+    # Go over most important INDICES (fuck logs, they're useless).
     for type in {"sessions", "notifications", "appevents"}:
         # Collect counts per id, per index
         ids[type] = ids_from_server(index=type, time_range=time_range)
@@ -213,7 +213,7 @@ def common_ids(index="appevents",
     # Calculate intersection of ids
     ids_inter = id_sets["sessions"] & id_sets["notifications"] & id_sets["appevents"]
 
-    log("{n} IDs were found in all indices.\n".format(n=len(ids_inter)), lvl=1)
+    log("{n} IDs were found in all INDICES.\n".format(n=len(ids_inter)), lvl=1)
 
     return {id: ids[index][id] for id in ids_inter}
 
@@ -261,7 +261,7 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
     # Establish connection
     es = connect()
 
-    # Are we looking for the right indices?
+    # Are we looking for the right INDICES?
     if index not in indices:
         raise Exception("Can't fetch data for anything other than appevents,"
                         " notifications or sessions (or logs, but whatever).")
@@ -382,7 +382,7 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
 # Functions to export data to csv and/or pickle #
 #################################################
 
-def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv_file=False):
+def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv_file=False, parquet=False):
     """
     Export data to file type (standard CSV file, pickle possible).
 
@@ -405,18 +405,30 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
 
     # Gather data for data frame export
     to_export = []
-    for d in data.values():
+    for id, d in data.items():
+
+        # Check if we got data!
+        if not d:
+            log(f"WARNING: Did not receive data for {id}!", lvl=1)
+            continue
+
         for dd in d:
             to_export.append(dd['_source'])
 
-    # Convert to formatted data frame
-    df = hlp.format_data(pd.DataFrame(to_export), index)
+    # If there's no data...
+    if not to_export:
 
-    # Set file name (and have it mention its type for clarity)
-    new_name = name + "_" + index
+        log(f"WARNING: No data to export!", lvl=1)
 
-    # Save the data frame
-    hlp.save(df=df, dir=dir, name=new_name, csv_file=csv_file, pickle=pickle, parquet=parquet)
+    else:
+        # ...else, convert to formatted data frame
+        df = hlp.format_data(pd.DataFrame(to_export), index)
+
+        # Set file name (and have it mention its type for clarity)
+        new_name = name + "_" + index
+
+        # Save the data frame
+        hlp.save(df=df, dir=dir, name=new_name, csv_file=csv_file, pickle=pickle, parquet=parquet)
 
 
 ##################################################
@@ -430,7 +442,7 @@ def pipeline(name: str, ids: list, dir: str,
              subfolder=False,
              pickle=False, csv_file=True, parquet=False):
     """
-    Get data across multiple indices. By default, they are stored in the same folder.
+    Get data across multiple INDICES. By default, they are stored in the same folder.
 
     :param name: name of dataset
     :param ids: IDs in dataset
@@ -450,9 +462,8 @@ def pipeline(name: str, ids: list, dir: str,
     # All data
     all_df = {}
 
-    # Go over interesting indices
+    # Go over interesting INDICES
     for index in indices:
-
         # Get data from server
         log("Getting started on <" + index + ">...", lvl=1)
         data = fetch(index=index, ids=ids, time_range=time_range)
@@ -486,7 +497,7 @@ def split_pipeline(ids: list, dir: str,
                    subfolder=True,
                    pickle=True, csv_file=False):
     """
-    Get data across indices, but split up per ID. By default, create subfolders.
+    Get data across INDICES, but split up per ID. By default, create subfolders.
 
     :param ids: IDs in dataset
     :param dir: directory in which to store data
@@ -507,7 +518,7 @@ def split_pipeline(ids: list, dir: str,
         log("Getting started on ID {}".format(id), title=True)
 
         pipeline(dir=dir,
-                 name=id,
+                 name=str(id),
                  ids=[id],
                  indices=indices,
                  time_range=time_range,
@@ -525,14 +536,17 @@ def split_pipeline(ids: list, dir: str,
 if __name__ in ['__main__', 'builtins']:
     # Sup?
     hlp.hi()
-    hlp.set_param(log_level=2, data_dir='../../data')
+    hlp.set_param(log_level=2)
 
     ids = ["d1002904-3a30-4515-816e-ef5b6b8ec84a",
            "273f3a6e-d724-4ed3-80e7-d9ec73b3ad24"]
 
-    time_range = ('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000')
+    time_range = ('2019-11-01T16:00:00.000', '2019-11-01T16:15:00.000')
 
-    for id in ids:
+    '''for id in ids:
         new_time_range = hlp.split_time_range(time_range=time_range, duration=pd.Timedelta(days=28))
         log("New time range: {}".format(new_time_range), lvl=2)
-        fetch(index='appevents', ids=id, time_range=new_time_range)
+        fetch(index='appevents', ids=id, time_range=time_range)'''
+
+    pipeline(name='test', ids=ids, dir=hlp.DATA_DIR, indices=('appevents', 'sessions', 'notifications'),
+             time_range=time_range, parquet=True)
