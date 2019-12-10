@@ -112,6 +112,4 @@ Development
 Contributors
 ------------
 
-- Nicolas Legrand
-- `Richard Höchenberger <http://hoechenberger.net/>`_
-- `Arthur Paulino <https://github.com/arthurpaulino>`_
+- You?
