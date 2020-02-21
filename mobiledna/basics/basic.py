@@ -151,6 +151,7 @@ def screen_time(df: pd.DataFrame, overall=False) -> pd.Series:
 
 if __name__ == "__main__":
     hlp.hi()
+
     path_ses = os.path.join(hlp.DATA_DIR, 'test_sessions.csv')
     path_app = os.path.join(hlp.DATA_DIR, 'test_appevents.csv')
     path_not = os.path.join(hlp.DATA_DIR, 'test_notifications.csv')
