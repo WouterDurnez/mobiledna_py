@@ -15,6 +15,7 @@ HELPER FUNCTIONS
 
 import os
 import random as rnd
+import sys
 import time
 from datetime import datetime
 from pprint import PrettyPrinter
@@ -32,6 +33,7 @@ pp = PrettyPrinter(indent=4)
 # Set log level (1 = only top level log messages -> 3 = all log messages)
 LOG_LEVEL = 3
 DATA_DIR = os.path.join(os.pardir, os.pardir, 'data')
+CACHE_DIR = os.path.join(os.pardir, os.pardir, 'cache')
 INDICES = {'notifications', 'appevents', 'sessions', 'logs'}
 INDEX_FIELDS = {
     'notifications': [
@@ -67,10 +69,8 @@ INDEX_FIELDS = {
         'data_version',
         'id',
         'sessionID',
-        'session on',
         'studyKey',
-        'surveyId',
-        'timestamp'
+        'surveyId'
     ],
     'logs': [
         'data_version',
@@ -87,7 +87,7 @@ INDEX_FIELDS = {
 # Helper functions #
 ####################
 
-def set_param(log_level=None, data_dir=None):
+def set_param(log_level=None, data_dir=None, cache_dir=None):
     """
     Set mobileDNA parameters.
 
@@ -98,6 +98,7 @@ def set_param(log_level=None, data_dir=None):
     # Declare these variables to be global
     global LOG_LEVEL
     global DATA_DIR
+    global CACHE_DIR
 
     # Set log level
     if log_level:
@@ -106,6 +107,10 @@ def set_param(log_level=None, data_dir=None):
     # Set new data directory
     if data_dir:
         DATA_DIR = data_dir
+
+    # Set new cache directory
+    if cache_dir:
+        CACHE_DIR = cache_dir
 
 
 def log(*message, lvl=3, sep="", title=False):
@@ -120,7 +125,7 @@ def log(*message, lvl=3, sep="", title=False):
     """
 
     # Set timezone
-    if 'TZ' not in os.environ:
+    if 'TZ' not in os.environ and sys.platform == 'darwin':
         os.environ['TZ'] = 'Europe/Amsterdam'
         time.tzset()
 
@@ -173,8 +178,8 @@ def set_dir(*dirs):
     """
 
     for dir in dirs:
-        if not os.path.exists(os.path.join(os.pardir, dir)):
-            os.makedirs(os.path.join(os.pardir, dir))
+        if not os.path.exists(dir):
+            os.makedirs(dir)
             log("WARNING: Data directory <{dir}> did not exist yet, and was created.".format(dir=dir), lvl=1)
         else:
             log("\'{}\' folder accounted for.".format(dir), lvl=3)
@@ -185,6 +190,7 @@ def set_dir(*dirs):
 ##################
 
 def to_timestamp(df: pd.DataFrame, columns: list):
+    """MARKED FOR DELETION"""
     for column in columns:
         df[column] = df[column].astype(int) / 10 ** 9
 
@@ -258,7 +264,7 @@ def hi():
     # Set this warning if you intend to keep working on the same data frame,
     # and you're not too worried about messing up the raw data.
     pd.set_option('chained_assignment', None)
-
+    rnd.seed(616)
 
 ########################
 # Data frame functions #
@@ -299,10 +305,10 @@ def check_index(df: pd.DataFrame, index: str, ignore_error=False) -> bool:
     # If our data type is not what we expected, return False (or throw an error)
     if true_index != index:
         if ignore_error:
+            log(f"Unexpected index! Expected <{index}>, but got <{true_index}>.", lvl=3)
             return False
         else:
-            raise Exception("ERROR: Unexpected index! Expected <{expected}>, but got <{true}>.".
-                            format(expected=index, true=true_index))
+            raise Exception(f"ERROR: Unexpected index! Expected <{index}>, but got <{true_index}>.")
 
     # ...else return that check is A-OK
     return True
@@ -327,9 +333,9 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
         # Reformat data version (trying to convert to int)
         df.data_version = pd.to_numeric(df.data_version, downcast='float')
 
-        # Downcast timestamps
-        df.startTime = pd.to_numeric(pd.to_datetime(df.startTime).astype(int) / 10 ** 9, downcast='unsigned')
-        df.endTime = pd.to_numeric(pd.to_datetime(df.endTime).astype(int) / 10 ** 9, downcast='unsigned')
+        # Format timestamps
+        df.startTime = df.startTime.astype('datetime64[ns]')
+        df.endTime = df.endTime.astype('datetime64[ns]')
 
         # Downcast lat/long
         df.latitude = pd.to_numeric(df.latitude, downcast='float')
@@ -339,21 +345,24 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
         df.battery = df.battery.astype('uint8')
 
         # Factorize categorical variables (ids, apps, session numbers, etc.)
-        df.id = df.id.astype('category')
-        df.application = df.application.astype('category')
-        df.session = df.session.astype('category')
-        df.studyKey = df.studyKey.astype('category')
-        df.surveyId = df.surveyId.astype('category')
-        df.model = df.model.astype('category')
+        to_category = ['id', 'application', 'session', 'studyKey', 'surveyId', 'model']
+        for column in to_category:
+            df[column] = df[column].astype('category')
+
 
     elif index == 'notifications':
 
-        df['time'] = pd.to_datetime(df['time'])
+        df.time = df.time.astype('datetime64[ns]')
+        df.id = df.id.astype('category')
+        df.application = df.application.astype('category')
+        df.notificationID = df.notificationID.astype('category')
+        df.studyKey = df.studyKey.astype('category')
+        df.surveyId = df.surveyId.astype('category')
 
     elif index == 'sessions':
 
         # Convert to timestamp
-        df['timestamp'] = pd.to_datetime(df['timestamp']).astype(int) / 10 ** 9
+        df['timestamp'] = df.timestamp.astype('datetime64[ns]')
 
         # Sort data frame
         df.sort_values(by=['id', 'timestamp'], inplace=True)
@@ -372,12 +381,14 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
 
     elif index == 'logs':
 
-        df['date'] = pd.to_datetime(df['date'])
+        df['date'] = df.date.astype('datetime64[ns]')
 
     for col in df.columns:
 
         if col.startswith('Unnamed') or col not in INDEX_FIELDS[index]:
             df.drop(labels=[col], axis=1, inplace=True)
+
+    log("Successfully formatted dataframe.", lvl=3)
 
     return df
 
@@ -403,7 +414,7 @@ def add_duration(df: pd.DataFrame) -> pd.DataFrame:
 
     # Check if there are any negative durations.
     if not df[df["duration"] < 0].empty:
-        raise Warning("WARNING: encountered negative duration!")
+        log("WARNING: encountered negative duration!", lvl=1)
 
     return df
 
@@ -473,16 +484,16 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
     if parquet:
 
         try:
-
-            df.to_parquet(fname=path + ".snappy.parquet", engine='auto', compression='snappy')
-            log("Saved data frame to {}".format(path + ".snappy.parquet"))
+            df.to_parquet(fname=path + ".parquet", engine='auto', compression='snappy')
+            log("Saved data frame to {}".format(path + ".parquet"))
 
         except Exception as e:
 
             log("ERROR: Failed to store data frame as parquet! {e}".format(e=e), lvl=1)
 
 
-def load(path: str, index: str, file_type='infer', sep=';', dec='.', format=False) -> pd.DataFrame:
+@time_it
+def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataFrame:
     """
     Wrapper function to load mobileDNA data frames.
 
@@ -540,10 +551,7 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.', format=Fals
         if col.startswith('Unnamed'):
             df.drop(labels=[col], axis=1, inplace=True)
 
-    # If format is requested, go over different INDICES and format columns where necessary
-    if format:
-        df = format_data(df=df, index=index)
-
+    # Add duration if necessary
     if 'duration' not in df and (
             check_index(df=df, index='appevents', ignore_error=True) or
             check_index(df=df, index='sessions', ignore_error=True)):
@@ -560,4 +568,11 @@ if __name__ in ['__main__', 'builtins']:
     # Howdy
     hi()
 
-    df = load(path=os.path.join(DATA_DIR, "test_appevents.csv"), index='appevents')
+    ts = '2019-11-04 21:43:16.139000'
+    # start = pd.to_numeric(pd.to_datetime(df.startTime).astype(int) / 10 ** 9, downcast='unsigned')
+
+    # logs = load(path=os.path.join(DATA_DIR,"log_test_logs.parquet"), index='logs')
+
+    # df = pd.read_parquet(path=os.path.join(DATA_DIR, "glance_small_appevents.parquet"), engine='auto')
+
+    # df2 = load(path=os.path.join(DATA_DIR, "glance_small_appevents.parquet"), index='appevents')

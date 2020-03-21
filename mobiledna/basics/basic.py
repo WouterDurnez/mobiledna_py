@@ -39,17 +39,17 @@ def count_days(df: pd.DataFrame, overall=False) -> pd.Series:
     """
 
     # Check data frame type
-    check_index(df=df, index='appevents')
+    check_index(df=df, index='appevents', ignore_error=True)
 
     # Get date portion of timestamp and factorize (make it more efficient)
-    df['date'] = pd.to_datetime(df['startTimeMillis'], unit='ms').dt.date
+    df['startDate'] = pd.to_datetime(df['startTime'], unit='s').dt.date
 
     # If we're looking across the whole dataset, return the number of unique dates in the dataset
     if overall:
         return pd.Series(df.date.nunique(), index=['overall'])
 
     # ...else, get number of unique dates per ID
-    return df.groupby(by=['id']).date.nunique()
+    return df.groupby(by=['id']).startDate.nunique()
 
 
 @hlp.time_it
@@ -63,7 +63,7 @@ def count_events(df: pd.DataFrame, overall=False) -> pd.Series:
     """
 
     # Check data frame type
-    check_index(df=df, index='appevents')
+    check_index(df=df, index='appevents', ignore_error=True)
 
     # If we're looking across the whole dataset, just return the length
     if overall:
@@ -84,7 +84,7 @@ def active_screen_time(df: pd.DataFrame, overall=False) -> pd.Series:
     """
 
     # Check data frame type
-    check_index(df=df, index='appevents')
+    check_index(df=df, index='appevents', ignore_error=True)
 
     # Check if duration column is there...
     if 'duration' not in df:
@@ -114,7 +114,7 @@ def count_sessions(df: pd.DataFrame, overall=False) -> pd.Series:
     """
 
     # Check data frame type
-    check_index(df=df, index='sessions')
+    check_index(df=df, index='sessions', ignore_error=True)
 
     # Remove rows with deactivation
     df = df.loc[df['session on'] == True]
@@ -129,8 +129,15 @@ def count_sessions(df: pd.DataFrame, overall=False) -> pd.Series:
 
 @hlp.time_it
 def screen_time(df: pd.DataFrame, overall=False) -> pd.Series:
+    """
+    Get overall screen time from sessions index (overall or per ID).
+
+    :param df: sessions data frame
+    :param overall: (bool) across dataset (True) or per ID (False, default)
+    :return: screen time (Series)
+    """
     # Check data frame type
-    check_index(df=df, index='sessions')
+    check_index(df=df, index='sessions', ignore_error=True)
 
     # Check if duration column is there...
     if 'duration' not in df:
@@ -152,21 +159,16 @@ def screen_time(df: pd.DataFrame, overall=False) -> pd.Series:
 if __name__ == "__main__":
     hlp.hi()
 
-    path_ses = os.path.join(hlp.DATA_DIR, 'test_sessions.csv')
-    path_app = os.path.join(hlp.DATA_DIR, 'test_appevents.csv')
-    path_not = os.path.join(hlp.DATA_DIR, 'test_notifications.csv')
+    df = hlp.load(path=os.path.join(hlp.DATA_DIR, "glance_small_appevents.parquet"), index='appevents')
 
-    '''df = hlp.load(path=path, index='appevents', file_type='csv')
+    days = count_days(df, overall=True)
+    days2 = count_days(df, overall=False)
+    events = count_events(df, False)
+    duration = active_screen_time(df, True)
 
-    count_days = count_days(df, overall=True)
-    count_events = count_events(df, False)
-    duration = active_screen_time(df, True)'''
+    df.startTime.groupby('id').max()
 
-    ses = hlp.load(path=path_ses, index='sessions')
-    app = hlp.load(path=path_app, index='appevents')
-    noti = hlp.load(path=path_not, index='notifications')
+    # test = screen_time(df)
 
-    test = screen_time(ses)
-
-    a = active_screen_time(df=app)
-    s = screen_time(df=ses)
+    a = active_screen_time(df=df)
+    # s = screen_time(df=ses)

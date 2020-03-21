@@ -16,7 +16,7 @@ ELASTICSEARCH FUNCTIONS
 import base64
 import csv
 import os
-import random
+import random as rnd
 import sys
 from pprint import PrettyPrinter
 
@@ -109,11 +109,11 @@ def ids_from_server(index="appevents",
     :return: dict of user IDs and counts of entries
     """
 
-    global es
-
     # Check argument
     if index not in indices:
         raise Exception("ERROR: Counts of active IDs must be based on appevents, sessions, notifications, or logs!")
+
+    global es
 
     # Connect to es server
     if not es:
@@ -174,7 +174,8 @@ def ids_from_server(index="appevents",
         ids[bucket['key']] = bucket['doc_count']
 
     # Log
-    log("Found {n} active IDs in {index}.\n".format(n=len(ids), index=index), lvl=1)
+    log("Found {n} active IDs in {index}.\n".
+        format(n=len(ids), index=index), lvl=1)
 
     return ids
 
@@ -239,7 +240,7 @@ def richest_ids(ids: dict, top=100) -> dict:
 def random_ids(ids: dict, n=100) -> dict:
     """Return random sample of ids."""
 
-    random_selection = {k: ids[k] for k in random.sample(population=ids.keys(), k=n)}
+    random_selection = {k: ids[k] for k in rnd.sample(population=ids.keys(), k=n)}
 
     return random_selection
 
@@ -257,9 +258,11 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
     :param time_range: only look in this time range
     :return: dict containing data (ES JSON format)
     """
+    global es
 
     # Establish connection
-    es = connect()
+    if not es:
+        es = connect()
 
     # Are we looking for the right INDICES?
     if index not in indices:
@@ -493,9 +496,9 @@ def pipeline(name: str, ids: list, dir: str,
 @hlp.time_it
 def split_pipeline(ids: list, dir: str,
                    indices=('appevents', 'notifications', 'sessions', 'logs'),
-                   time_range=('2019-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
+                   time_range=('2019-10-01T00:00:00.000', '2020-02-01T00:00:00.000'),
                    subfolder=True,
-                   pickle=True, csv_file=False):
+                   pickle=False, csv_file=False, parquet=True) -> list:
     """
     Get data across INDICES, but split up per ID. By default, create subfolders.
 
@@ -505,7 +508,7 @@ def split_pipeline(ids: list, dir: str,
     :param time_range:
     :param pickle:
     :param csv_file:
-    :return:
+    :return: list of ids that weren't fetched successfully
     """
 
     # Make sure IDs is the list (kind of unpythonic)
@@ -513,20 +516,29 @@ def split_pipeline(ids: list, dir: str,
         log("WARNING: ids argument was not a list (single ID?). Converting to list.", lvl=1)
         ids = [ids]
 
-    # Go over id list
-    for id in ids:
-        log("Getting started on ID {}".format(id), title=True)
+    # Gather ids for which fetch failed here
+    failed = []
 
-        pipeline(dir=dir,
-                 name=str(id),
-                 ids=[id],
-                 indices=indices,
-                 time_range=time_range,
-                 subfolder=subfolder,
-                 pickle=pickle,
-                 csv_file=csv_file)
+    # Go over id list
+    for index, id in enumerate(ids):
+        log(f"Getting started on ID {id} ({index + 1}/{len(ids)})", title=True)
+
+        try:
+            pipeline(dir=dir,
+                     name=str(id),
+                     ids=[id],
+                     indices=indices,
+                     time_range=time_range,
+                     subfolder=subfolder,
+                     parquet=parquet,
+                     pickle=pickle,
+                     csv_file=csv_file)
+        except Exception as e:
+            log(f"Failed to get data for {id}: {e}", lvl=1)
+            failed.append(id)
 
     log("\nALL DONE!\n")
+    return failed
 
 
 ########
@@ -536,17 +548,17 @@ def split_pipeline(ids: list, dir: str,
 if __name__ in ['__main__', 'builtins']:
     # Sup?
     hlp.hi()
-    hlp.set_param(log_level=2)
+    hlp.set_param(log_level=3)
 
-    ids = ["d1002904-3a30-4515-816e-ef5b6b8ec84a",
-           "273f3a6e-d724-4ed3-80e7-d9ec73b3ad24"]
+    time_range = ('2019-01-01T00:00:00.000', '2020-05-01T00:00:00.000')
 
-    time_range = ('2019-11-01T16:00:00.000', '2019-11-01T16:15:00.000')
+    # ids = ids_from_server(index='appevents', time_range=time_range)
+    ids = ids_from_file(hlp.DATA_DIR, file_name='glance_ids')
+    split_pipeline(ids=ids, subfolder=True,
+                   dir=os.path.join(hlp.DATA_DIR, 'glance'),
+                   time_range=time_range,
+                   indices=('appevents', 'sessions'),
+                   parquet=True,
+                   csv_file=False)
 
-    '''for id in ids:
-        new_time_range = hlp.split_time_range(time_range=time_range, duration=pd.Timedelta(days=28))
-        log("New time range: {}".format(new_time_range), lvl=2)
-        fetch(index='appevents', ids=id, time_range=time_range)'''
 
-    pipeline(name='test', ids=ids, dir=hlp.DATA_DIR, indices=('appevents', 'sessions', 'notifications'),
-             time_range=time_range, parquet=True)
