@@ -15,6 +15,7 @@ HELPER FUNCTIONS
 
 import os
 import random as rnd
+import sys
 import time
 from datetime import datetime
 from pprint import PrettyPrinter
@@ -67,10 +68,8 @@ INDEX_FIELDS = {
         'data_version',
         'id',
         'sessionID',
-        'session on',
         'studyKey',
-        'surveyId',
-        'timestamp'
+        'surveyId'
     ],
     'logs': [
         'data_version',
@@ -120,7 +119,7 @@ def log(*message, lvl=3, sep="", title=False):
     """
 
     # Set timezone
-    if 'TZ' not in os.environ:
+    if 'TZ' not in os.environ and sys.platform == 'darwin':
         os.environ['TZ'] = 'Europe/Amsterdam'
         time.tzset()
 
@@ -173,8 +172,8 @@ def set_dir(*dirs):
     """
 
     for dir in dirs:
-        if not os.path.exists(os.path.join(os.pardir, dir)):
-            os.makedirs(os.path.join(os.pardir, dir))
+        if not os.path.exists(dir):
+            os.makedirs(dir)
             log("WARNING: Data directory <{dir}> did not exist yet, and was created.".format(dir=dir), lvl=1)
         else:
             log("\'{}\' folder accounted for.".format(dir), lvl=3)
@@ -185,6 +184,7 @@ def set_dir(*dirs):
 ##################
 
 def to_timestamp(df: pd.DataFrame, columns: list):
+    """MARKED FOR DELETION"""
     for column in columns:
         df[column] = df[column].astype(int) / 10 ** 9
 
@@ -258,7 +258,7 @@ def hi():
     # Set this warning if you intend to keep working on the same data frame,
     # and you're not too worried about messing up the raw data.
     pd.set_option('chained_assignment', None)
-
+    rnd.seed(616)
 
 ########################
 # Data frame functions #
@@ -403,7 +403,7 @@ def add_duration(df: pd.DataFrame) -> pd.DataFrame:
 
     # Check if there are any negative durations.
     if not df[df["duration"] < 0].empty:
-        raise Warning("WARNING: encountered negative duration!")
+        log("WARNING: encountered negative duration!", lvl=1)
 
     return df
 
@@ -473,16 +473,16 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
     if parquet:
 
         try:
-
-            df.to_parquet(fname=path + ".snappy.parquet", engine='auto', compression='snappy')
-            log("Saved data frame to {}".format(path + ".snappy.parquet"))
+            print(path)
+            df.to_parquet(fname=path + ".parquet", engine='auto', compression='snappy')
+            log("Saved data frame to {}".format(path + ".parquet"))
 
         except Exception as e:
 
             log("ERROR: Failed to store data frame as parquet! {e}".format(e=e), lvl=1)
 
 
-def load(path: str, index: str, file_type='infer', sep=';', dec='.', format=False) -> pd.DataFrame:
+def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataFrame:
     """
     Wrapper function to load mobileDNA data frames.
 
@@ -540,10 +540,7 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.', format=Fals
         if col.startswith('Unnamed'):
             df.drop(labels=[col], axis=1, inplace=True)
 
-    # If format is requested, go over different INDICES and format columns where necessary
-    if format:
-        df = format_data(df=df, index=index)
-
+    # Add duration if necessary
     if 'duration' not in df and (
             check_index(df=df, index='appevents', ignore_error=True) or
             check_index(df=df, index='sessions', ignore_error=True)):
@@ -560,4 +557,11 @@ if __name__ in ['__main__', 'builtins']:
     # Howdy
     hi()
 
-    df = load(path=os.path.join(DATA_DIR, "test_appevents.csv"), index='appevents')
+    ts = '2019-11-04 21:43:16.139000'
+    # start = pd.to_numeric(pd.to_datetime(df.startTime).astype(int) / 10 ** 9, downcast='unsigned')
+
+    # logs = load(path=os.path.join(DATA_DIR,"log_test_logs.parquet"), index='logs')
+
+    # df = pd.read_parquet(path=os.path.join(DATA_DIR, "glance_small_appevents.parquet"), engine='auto')
+
+    # df2 = load(path=os.path.join(DATA_DIR, "glance_small_appevents.parquet"), index='appevents')
