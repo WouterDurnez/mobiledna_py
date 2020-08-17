@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-.. figure:: https://github.ugent.be/raw/imec-mict-UGent/mobiledna_py/master/docs/pictures/logo_mobiledna.png?token=AAABYY2K5VSAUAYEQP3BHPS57DRFU
+.. figure:: docs/pictures/logo_mobiledna.png
    :align: center
 
 
