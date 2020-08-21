@@ -478,7 +478,7 @@ def pipeline(name: str, ids: list, dir: str,
         dir_new = os.path.join(dir, index) if subfolder else dir
 
         # If this directory doesn't exist, make it
-        hlp.set_dir(dir_new)
+        # hlp.set_dir(dir_new)
 
         # Export to file
         export_elastic(dir=dir_new, name=name, index=index, data=data, csv_file=csv_file, pickle=pickle,

@@ -34,7 +34,7 @@ pp = PrettyPrinter(indent=4)
 LOG_LEVEL = 3
 DATA_DIR = os.path.join(os.pardir, os.pardir, 'data')
 CACHE_DIR = os.path.join(os.pardir, os.pardir, 'cache')
-INDICES = {'notifications', 'appevents', 'sessions', 'logs'}
+INDICES = {'notifications', 'appevents', 'sessions', 'logs', 'connectivity'}
 INDEX_FIELDS = {
     'notifications': [
         'application',
@@ -189,12 +189,6 @@ def set_dir(*dirs):
 # Time functions #
 ##################
 
-def to_timestamp(df: pd.DataFrame, columns: list):
-    """MARKED FOR DELETION"""
-    for column in columns:
-        df[column] = df[column].astype(int) / 10 ** 9
-
-
 def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore_error=False) -> tuple:
     """
     Takes a time range (formatted strings: '%Y-%m-%dT%H:%M:%S.%f'), and selects
@@ -264,7 +258,10 @@ def hi():
     # Set this warning if you intend to keep working on the same data frame,
     # and you're not too worried about messing up the raw data.
     pd.set_option('chained_assignment', None)
+
+    # Set a random seed
     rnd.seed(616)
+
 
 ########################
 # Data frame functions #
@@ -397,7 +394,7 @@ def add_duration(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculate app event duration and add to (new) data frame.
 
-    :param df: data frame to process (should be appevents index)
+    :param df: data frame to process (should be appevents or sessions index)
     :return: modified data frame
     """
 
@@ -408,13 +405,36 @@ def add_duration(df: pd.DataFrame) -> pd.DataFrame:
 
     # Calculate duration (in seconds)
     try:
-        df['duration'] = df['endTime'] - df['startTime']
+        df['duration'] = (df['endTime'] - df['startTime']).dt.total_seconds()
     except:
         raise Exception("ERROR: Failed to calculate duration!")
 
     # Check if there are any negative durations.
     if not df[df["duration"] < 0].empty:
         log("WARNING: encountered negative duration!", lvl=1)
+
+    return df
+
+
+def add_dates(df: pd.DataFrame, index: str) -> pd.DataFrame:
+    """
+    Get dates from datetime columns and add them as new column.
+
+    :param df: data frame to process
+    :param index: type of data
+    :return: adjusted data frame
+    """
+    if index == 'appevents' or index == 'sessions':
+
+        df['startDate'] = df.startTime.dt.date
+        df['endDate'] = df.endTime.dt.date
+
+    elif index == 'notifications':
+
+        df['date'] = df.time.dt.date
+
+    else:
+        log('Wrong index: nothing changed!', lvl=1)
 
     return df
 

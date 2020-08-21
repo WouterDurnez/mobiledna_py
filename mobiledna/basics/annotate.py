@@ -19,6 +19,7 @@ from os import listdir
 from os.path import join, pardir
 
 import numpy as np
+import pandas as pd
 from bs4 import BeautifulSoup
 from requests import get
 from tqdm import tqdm
@@ -135,6 +136,33 @@ def scrape_play_store(app_names: list, cache=None, force=False) -> (dict, list):
     return known_apps, unknown_apps
 
 
+def add_genre(df: pd.DataFrame, meta: dict) -> pd.DataFrame:
+    """
+    Take a data frame and annotate rows with genre field, based on application name.
+
+    :param df: data frame (appevents or notifications)
+    :param meta: dictionary containing cached app meta data.
+    :return: Annotated data frame
+    """
+
+    # Check if data frame has an application field
+    if 'application' not in df:
+        raise Exception('Cannot find <application> column in data frame!')
+
+    # Add genre field to row
+    def add_genre_row(row: pd.Series):
+
+        if row.application in meta.keys():
+            return meta[row.application]['genre1']
+        else:
+            return 'unknown'
+
+    tqdm.pandas(desc="Adding genre field")
+    df['genre'] = df.progress_apply(add_genre_row, axis=1)
+
+    return df
+
+
 if __name__ == '__main__':
 
     # Let's go
@@ -161,7 +189,7 @@ if __name__ == '__main__':
     apps = {k: v for k, v in sorted(apps.items(), key=lambda item: item[1], reverse=True)}
 
     # Scrape the play store and separate known apps from unknown apps
-    log('Scraping from Play Store.', lvl=1)
+    '''log('Scraping from Play Store.', lvl=1)
     app_names = list(apps.keys())
     knowns_play, unknowns_play = scrape_play_store(app_names=app_names)
 
@@ -172,10 +200,14 @@ if __name__ == '__main__':
     unknown_app_names = unknowns_play
 
     known_app_counts = {k: v for k, v in apps.items() if k in known_app_names}
-    unknown_app_counts = {k: v for k, v in apps.items() if k in unknown_app_names}
+    unknown_app_counts = {k: v for k, v in apps.items() if k in unknown_app_names}'''
+
+    app_meta = np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item()
+
+    data2 = add_genre(df=data, meta=app_meta)
 
     # Go through bing
-    """bing_url_prefix = 'https://www.bing.com/search?q=site%3Ahttps%3A%2F%2Fapkpure.com+'
+    '''bing_url_prefix = 'https://www.bing.com/search?q=site%3Ahttps%3A%2F%2Fapkpure.com+'
 
     for app_name in unknowns_play:
 
@@ -196,10 +228,13 @@ if __name__ == '__main__':
                 a['href'].__contains__(app_name) and
                 not (a['href'].__contains__('/fr/') or
                      a['href'].__contains__('/id/') or
+                     a['href'].__contains__('/in/') or
+                     a['href'].__contains__('/es/') or
                      a['href'].__contains__('/versions') or
                      a['href'].__contains__('/download') or
                      a['href'].__contains__('/nl/'))):
                 links.add(a['href'])
 
         if links and len(links) > 1:
-            print(app_name, len(links), links)"""
+            print(app_name, len(links), links)
+        '''
