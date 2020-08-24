@@ -8,7 +8,7 @@ def readme():
 
 
 setup(name='mobiledna',
-      version='0.3',
+      version='0.4',
       description='Codebase in support of mobileDNA platform',
       long_description='mobileDNA is a data logging app that sheds '
                        'light on smartphone usage. Data collected '
@@ -34,4 +34,5 @@ setup(name='mobiledna',
           'elasticsearch<=6.3.1',
           'pyarrow'
       ],
+      include_package_data=True,
       zip_safe=False)

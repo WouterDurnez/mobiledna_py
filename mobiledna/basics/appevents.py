@@ -14,11 +14,14 @@ APPEVENTS CLASS
 """
 
 from collections import Counter
+from os.path import join, pardir
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 import mobiledna.basics.help as hlp
+from mobiledna.basics.annotate import add_category
 from mobiledna.basics.help import log
 
 pd.set_option('display.max_rows', 500)
@@ -28,7 +31,7 @@ pd.set_option('display.width', 1000)
 
 class Appevents:
 
-    def __init__(self, data: pd.DataFrame = None):
+    def __init__(self, data: pd.DataFrame = None, add_categories=False):
 
         # Meta variables #
         ##################
@@ -69,6 +72,16 @@ class Appevents:
 
         # Set data attribute
         self.data = data
+
+        # Add date columns
+        self.data = hlp.add_dates(df=self.data, index='appevents')
+
+        # Add duration columns
+        self.data = hlp.add_duration(df=self.data)
+
+        # Add categories
+        if add_categories:
+            self.add_category()
 
         # Clean the data
         self.clean()
@@ -124,6 +137,30 @@ class Appevents:
 
         return cls(data=data)
 
+    def filter(self, category=None, application=None):
+
+        # If we want category-specific info, make sure we have category column
+        if category:
+            categories = [category] if not isinstance(category, list) else category
+
+            if 'category' not in self.data.columns:
+                self.add_category()
+
+            # ... and filter
+            data = self.data.loc[self.data.category.isin(categories)]
+
+        # If we want application-level info
+        elif application:
+            applications = [application] if not isinstance(application, list) else application
+
+            # ... filter
+            data = self.data.loc[self.data.application.isin(applications)]
+
+        else:
+            data = self.data
+
+        return data
+
     def merge(self, *appevents: pd.DataFrame):
         """
         Merge new data into existing Appevents object.
@@ -135,6 +172,13 @@ class Appevents:
         new_data = pd.concat([self.data, *appevents], sort=False)
 
         return Appevents(data=new_data)
+
+    def add_category(self, meta=None, force=False, scrape=False):
+
+        if 'category' not in self.data.columns and not force:
+            self.data = add_category(df=self.data, meta=meta, scrape=scrape)
+        else:
+            pass
 
     def clean(self):
         """
@@ -171,9 +215,6 @@ class Appevents:
         """
         :return: total number of log days per user
         """
-
-        self.data = hlp.add_dates(df=self.data, index='appevents')
-
         return self.data.groupby('id').startDate.nunique().rename('days')
 
     def get_events(self) -> pd.Series:
@@ -187,10 +228,6 @@ class Appevents:
         """
         :return: total duration per user
         """
-
-        if 'duration' not in self.data.columns:
-            self.data = hlp.add_duration(df=self.data)
-
         return self.data.groupby('id').duration.sum().rename('durations')
 
     def get_session_sequences(self) -> list:
@@ -207,22 +244,53 @@ class Appevents:
 
         return sessions
 
-    def get_daily_events(self) -> pd.Series:
+    # Compound getters #
+    ####################
+
+    def get_daily_events(self, category=None, application=None) -> pd.Series:
         """
         :return: daily events
         """
 
-        return (self.__events__ / self.__days__).rename('daily_events')
+        # Filter data on request
+        data = self.filter(category=category, application=application)
 
-    def get_daily_durations(self) -> pd.Series:
+        return data.groupby(['id', 'startDate']).application.count().reset_index(). \
+            groupby('id').application.mean().rename('daily_events')
+
+    def get_daily_durations(self, category=None, application=None) -> pd.Series:
         """
         :return: daily durations
         """
 
+        # Filter data on request
+        data = self.filter(category=category, application=application)
+
         return (self.__durations__ / self.__days__).rename('daily_durations')
+
+    def get_daily_events_sd(self, category=None, application=None) -> pd.Series:
+
+        # Filter data on request
+        data = self.filter(category=category, application=application)
+
+        return self.data.groupby(['id', 'startDate']).application.count().reset_index(). \
+            groupby('id').application.std().rename('daily_events_sd')
+
+    def get_daily_durations_sd(self, category=None, application=None) -> pd.Series:
+
+        # Filter data on request
+        data = self.filter(category=category, application=application)
+
+        return self.data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
+            groupby('id').duration.std().rename('daily_duration_sd')
 
 
 if __name__ == "__main__":
+    hlp.set_param(log_level=1,
+                  cache_dir=join(pardir, pardir, 'caches'))
+    app_meta = np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item()
+
+
     data = pd.read_parquet(path='../../data/glance/appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet')
 
     data_path = '../../data/glance/appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet'

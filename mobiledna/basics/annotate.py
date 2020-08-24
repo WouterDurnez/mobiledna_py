@@ -50,7 +50,10 @@ def scrape_play_store(app_names: list, cache=None, force=False) -> (dict, list):
     cached_apps = 0
 
     # Loop over app names
-    for app_name in tqdm(app_names):
+    t_appnames = tqdm(app_names)
+    for app_name in t_appnames:
+
+        t_appnames.set_description('Scraping')
 
         # Check with local cache, which must be a dict
         if isinstance(cache, dict):
@@ -136,9 +139,9 @@ def scrape_play_store(app_names: list, cache=None, force=False) -> (dict, list):
     return known_apps, unknown_apps
 
 
-def add_genre(df: pd.DataFrame, meta: dict) -> pd.DataFrame:
+def add_category(df: pd.DataFrame, meta: dict, scrape=False) -> pd.DataFrame:
     """
-    Take a data frame and annotate rows with genre field, based on application name.
+    Take a data frame and annotate rows with category field, based on application name.
 
     :param df: data frame (appevents or notifications)
     :param meta: dictionary containing cached app meta data.
@@ -149,16 +152,27 @@ def add_genre(df: pd.DataFrame, meta: dict) -> pd.DataFrame:
     if 'application' not in df:
         raise Exception('Cannot find <application> column in data frame!')
 
-    # Add genre field to row
-    def add_genre_row(row: pd.Series):
+    # Check if meta dictionary was provided - if not, scrape Play store
+    if not meta:
+        log('No meta dictionary provided. Scraping Play store.', lvl=2)
+        scrape = True
+
+    # Scape the Play store if requested
+    if scrape:
+        applications = list(df.application.unique())
+
+        meta, _ = scrape_play_store(app_names=applications, cache=meta, force=True)
+
+    # Add category field to row
+    def adding_category_row(row: pd.Series):
 
         if row.application in meta.keys():
             return meta[row.application]['genre1']
         else:
             return 'unknown'
 
-    tqdm.pandas(desc="Adding genre field")
-    df['genre'] = df.progress_apply(add_genre_row, axis=1)
+    tqdm.pandas(desc="Adding category")
+    df['category'] = df.progress_apply(adding_category_row, axis=1)
 
     return df
 
@@ -204,7 +218,7 @@ if __name__ == '__main__':
 
     app_meta = np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item()
 
-    data2 = add_genre(df=data, meta=app_meta)
+    data2 = add_category(df=data, meta=app_meta)
 
     # Go through bing
     '''bing_url_prefix = 'https://www.bing.com/search?q=site%3Ahttps%3A%2F%2Fapkpure.com+'
