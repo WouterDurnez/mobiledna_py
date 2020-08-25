@@ -142,7 +142,7 @@ def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, li
             known_apps = {**cache, **known_apps}
 
     # Store app meta data cache
-    np.save(file=join(pardir, pardir, 'caches', 'app_meta.npy'), arr=known_apps)
+    np.save(file=join(pardir, pardir, 'cache', 'app_meta.npy'), arr=known_apps)
 
     return known_apps, unknown_apps
 
@@ -158,7 +158,7 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFram
 
     # Load app meta data
     try:
-        meta = np.load(join(pardir, pardir, 'caches', 'app_meta.npy'), allow_pickle=True).item()
+        meta = np.load(join(pardir, pardir, 'cache', 'app_meta.npy'), allow_pickle=True).item()
     except Exception as e:
         log('No app meta data found. Scraping Play store.', lvl=1)
         scrape = True
@@ -191,10 +191,10 @@ if __name__ == '__main__':
 
     # Let's go
     hlp.hi()
-    hlp.set_dir(join(pardir, pardir, 'caches'))
+    hlp.set_dir(join(pardir, pardir, 'cache'))
     hlp.set_param(log_level=1,
                   data_dir=join(pardir, pardir, 'data', 'glance', 'processed_appevents'),
-                  cache_dir=join(pardir, pardir, 'caches'))
+                  cache_dir=join(pardir, pardir, 'cache'))
 
     # Load the data and gather apps
     log('Collecting app names.', lvl=1)
