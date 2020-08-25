@@ -28,7 +28,7 @@ from mobiledna.basics import help as hlp
 from mobiledna.basics.help import log
 
 
-def scrape_play_store(app_names: list, cache=None, force=False) -> (dict, list):
+def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, list):
     """
     Scrape app meta data from Google play store.
 
@@ -50,10 +50,11 @@ def scrape_play_store(app_names: list, cache=None, force=False) -> (dict, list):
     cached_apps = 0
 
     # Loop over app names
-    t_appnames = tqdm(app_names)
-    for app_name in t_appnames:
+    t_app_names = app_names if hlp.LOG_LEVEL > 1 else tqdm(app_names)
+    if hlp.LOG_LEVEL == 1:
+        t_app_names.set_description('Scraping')
+    for app_name in t_app_names:
 
-        t_appnames.set_description('Scraping')
 
         # Check with local cache, which must be a dict
         if isinstance(cache, dict):
@@ -65,7 +66,7 @@ def scrape_play_store(app_names: list, cache=None, force=False) -> (dict, list):
                 cached_apps += 1
 
                 # If we don't want to overwrite, skip this one
-                if not force:
+                if not overwrite:
                     continue
 
         # Combined into full URLs per app
@@ -133,41 +134,50 @@ def scrape_play_store(app_names: list, cache=None, force=False) -> (dict, list):
     log(f"Failed to get info on {len(unknown_apps)} apps.", lvl=1)
     log(f"{cached_apps} apps were already cached.", lvl=1)
 
+    # Merge new info with cache
     if isinstance(cache, dict):
-        known_apps = {**cache, **known_apps}
+        if overwrite:
+            known_apps = {**known_apps, **cache}
+        else:
+            known_apps = {**cache, **known_apps}
+
+    # Store app meta data cache
+    np.save(file=join(pardir, pardir, 'caches', 'app_meta.npy'), arr=known_apps)
 
     return known_apps, unknown_apps
 
 
-def add_category(df: pd.DataFrame, meta: dict, scrape=False) -> pd.DataFrame:
+def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFrame:
     """
     Take a data frame and annotate rows with category field, based on application name.
 
     :param df: data frame (appevents or notifications)
-    :param meta: dictionary containing cached app meta data.
+    :param scrape: scrape Play Store for new info (set to True if no meta data is found)
     :return: Annotated data frame
     """
+
+    # Load app meta data
+    try:
+        meta = np.load(join(pardir, pardir, 'caches', 'app_meta.npy'), allow_pickle=True).item()
+    except Exception as e:
+        log('No app meta data found. Scraping Play store.', lvl=1)
+        scrape = True
 
     # Check if data frame has an application field
     if 'application' not in df:
         raise Exception('Cannot find <application> column in data frame!')
 
-    # Check if meta dictionary was provided - if not, scrape Play store
-    if not meta:
-        log('No meta dictionary provided. Scraping Play store.', lvl=2)
-        scrape = True
-
     # Scape the Play store if requested
     if scrape:
         applications = list(df.application.unique())
 
-        meta, _ = scrape_play_store(app_names=applications, cache=meta, force=True)
+        meta, _ = scrape_play_store(app_names=applications, cache=meta, overwrite=False)
 
     # Add category field to row
     def adding_category_row(row: pd.Series):
 
         if row.application in meta.keys():
-            return meta[row.application]['genre1']
+            return meta[row.application]['genre1'].lower()
         else:
             return 'unknown'
 
@@ -191,7 +201,7 @@ if __name__ == '__main__':
     appevents_files = listdir(hlp.DATA_DIR)
     apps = {}
 
-    for appevents_file in tqdm(appevents_files):
+    for appevents_file in tqdm(appevents_files[0:3]):
         # Load data
         data = hlp.load(path=join(hlp.DATA_DIR, appevents_file), index='appevents')
 
@@ -202,23 +212,7 @@ if __name__ == '__main__':
     # Sort apps by number of times they occurred in data
     apps = {k: v for k, v in sorted(apps.items(), key=lambda item: item[1], reverse=True)}
 
-    # Scrape the play store and separate known apps from unknown apps
-    '''log('Scraping from Play Store.', lvl=1)
-    app_names = list(apps.keys())
-    knowns_play, unknowns_play = scrape_play_store(app_names=app_names)
-
-    # Save meta data to cache folder
-    np.save(file=join(hlp.CACHE_DIR, 'app_meta.npy'), arr=knowns_play)
-
-    known_app_names = list(knowns_play.keys())
-    unknown_app_names = unknowns_play
-
-    known_app_counts = {k: v for k, v in apps.items() if k in known_app_names}
-    unknown_app_counts = {k: v for k, v in apps.items() if k in unknown_app_names}'''
-
-    app_meta = np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item()
-
-    data2 = add_category(df=data, meta=app_meta)
+    data2 = add_category(df=data, scrape=True, overwrite=False)
 
     # Go through bing
     '''bing_url_prefix = 'https://www.bing.com/search?q=site%3Ahttps%3A%2F%2Fapkpure.com+'

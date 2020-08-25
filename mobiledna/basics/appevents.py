@@ -14,9 +14,7 @@ APPEVENTS CLASS
 """
 
 from collections import Counter
-from os.path import join, pardir
 
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
@@ -31,7 +29,7 @@ pd.set_option('display.width', 1000)
 
 class Appevents:
 
-    def __init__(self, data: pd.DataFrame = None, add_categories=False):
+    def __init__(self, data: pd.DataFrame = None, add_categories=False, get_session_sequences=False):
 
         # Meta variables #
         ##################
@@ -83,14 +81,12 @@ class Appevents:
         if add_categories:
             self.add_category()
 
-        # Clean the data
-        self.clean()
-
         # Initialize attributes
         self.__users__ = self.get_users()
         self.__days__ = self.get_days()
         self.__events__ = self.get_events()
         self.__durations__ = self.get_durations()
+        self.__session_sequences__ = self.get_session_sequences() if get_session_sequences else None
 
     @classmethod
     def load(cls, path: str, file_type='infer', sep=',', decimal='.'):
@@ -173,74 +169,57 @@ class Appevents:
 
         return Appevents(data=new_data)
 
-    def add_category(self, meta=None, force=False, scrape=False):
+    def add_category(self, scrape=False, overwrite=False):
 
-        if 'category' not in self.data.columns and not force:
-            self.data = add_category(df=self.data, meta=meta, scrape=scrape)
-        else:
-            pass
-
-    def clean(self):
-        """
-        Drop unwanted (Unnamed) columns.
-
-        :return: cleaned Appevents (data)
-        """
-
-        for col in self.data.columns:
-
-            if col.__contains__('Unnamed'):
-                self.data.drop(labels=col, axis=1, inplace=True)
+        self.data = add_category(df=self.data, scrape=scrape, overwrite=overwrite)
 
     # Getters #
     ###########
 
-    def get_users(self) -> pd.Series:
+    def get_users(self) -> list:
         """
-        :return: list of users
+        Returns a list of unique users
         """
-
         return list(self.data.id.unique())
 
     def get_applications(self) -> dict:
         """
-        :return: all applications and their counts (overall)
+        Returns an {app: app count} dictionary
         """
 
-        app_counts = Counter(list(self.data.application))
-
-        return app_counts
+        return Counter(list(self.data.application))
 
     def get_days(self) -> pd.Series:
         """
-        :return: total number of log days per user
+        Returns the number of unique days
         """
         return self.data.groupby('id').startDate.nunique().rename('days')
 
     def get_events(self) -> pd.Series:
         """
-        :return: total appevent count per user
+        Returns the number of appevents
         """
 
         return self.data.groupby('id').application.count().rename('events')
 
     def get_durations(self) -> pd.Series:
         """
-        :return: total duration per user
+        Returns the total duration
         """
         return self.data.groupby('id').duration.sum().rename('durations')
 
     def get_session_sequences(self) -> list:
         """
-        :return: list of session sequences
+        Returns a list of all session sequences
         """
 
         sessions = []
 
-        self.data.groupby('id').sort_values(by=['session', 'startTime'])
+        t_sessions = tqdm(self.data.session.unique())
+        t_sessions.set_description('Extracting sessions')
 
-        for session in tqdm(self.data.session.unique()):
-            sessions.append(self.data.loc[self.data.session == session].application.tolist())
+        for session in t_sessions:
+            sessions.append(tuple(self.data.loc[self.data.session == session].application))
 
         return sessions
 
@@ -249,54 +228,115 @@ class Appevents:
 
     def get_daily_events(self, category=None, application=None) -> pd.Series:
         """
-        :return: daily events
+        Returns number of appevents per day
         """
+
+        # Field name
+        name = ('daily_events' +
+                (f'_{category}' if category else '') +
+                (f'_{application}' if application else '')).lower()
 
         # Filter data on request
         data = self.filter(category=category, application=application)
 
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
-            groupby('id').application.mean().rename('daily_events')
+            groupby('id').application.mean().rename(name)
 
     def get_daily_durations(self, category=None, application=None) -> pd.Series:
         """
-        :return: daily durations
+        Returns duration per day
         """
 
+        # Field name
+        name = ('daily_durations' +
+                (f'_{category}' if category else '') +
+                (f'_{application}' if application else '')).lower()
+
         # Filter data on request
         data = self.filter(category=category, application=application)
 
-        return (self.__durations__ / self.__days__).rename('daily_durations')
+        return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
+            groupby('id').duration.mean().rename(name)
 
     def get_daily_events_sd(self, category=None, application=None) -> pd.Series:
+        """
+        Returns standard deviation on number of events per day
+        """
+
+        # Field name
+        name = ('daily_events_sd' +
+                (f'_{category}' if category else '') +
+                (f'_{application}' if application else '')).lower()
 
         # Filter data on request
         data = self.filter(category=category, application=application)
 
-        return self.data.groupby(['id', 'startDate']).application.count().reset_index(). \
-            groupby('id').application.std().rename('daily_events_sd')
+        return data.groupby(['id', 'startDate']).application.count().reset_index(). \
+            groupby('id').application.std().rename(name)
 
     def get_daily_durations_sd(self, category=None, application=None) -> pd.Series:
+        """
+        Returns duration per day
+        """
+
+        # Field name
+        name = ('daily_durations_sd' +
+                (f'_{category}' if category else '') +
+                (f'_{application}' if application else '')).lower()
 
         # Filter data on request
         data = self.filter(category=category, application=application)
 
-        return self.data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
+        return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.std().rename('daily_duration_sd')
+
+    def get_sessions_starting_with(self, application=None):
+
+        positive_sessions = []
+
+        if not self.__session_sequences__:
+            self.__session_sequences__ = self.get_session_sequences()
+
+        t_sessions = tqdm(self.__session_sequences__)
+        t_sessions.set_description('Processing sessions')
+
+        for session in t_sessions:
+
+            if application:
+                applications = application if isinstance(application, list) else [application]
+                if session[0] in applications:
+                    positive_sessions.append(session)
+
+        return positive_sessions
 
 
 if __name__ == "__main__":
-    hlp.set_param(log_level=1,
-                  cache_dir=join(pardir, pardir, 'caches'))
-    app_meta = np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item()
+    ###########
+    # EXAMPLE #
+    ###########
 
+    hlp.hi()
+    hlp.set_param(log_level=1)
 
+    # Read sample data
     data = pd.read_parquet(path='../../data/glance/appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet')
 
+    # Data path
     data_path = '../../data/glance/appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet'
+
+    # More sample data
     data2 = pd.read_parquet(path='../../data/glance/appevents/0a9edba1-14e3-466a-8d0c-f8a8170cefc8_appevents.parquet')
     data3 = pd.read_parquet(path='../../data/glance/appevents/0a48d1e8-ead2-404a-a5a2-6b05371200b1_appevents.parquet')
     data4 = pd.concat([data, data2, data3])
+
+    # Initialize object by loading from path
+    print(1)
     ae = Appevents.load(path=data_path)
-    ae2 = ae.merge(data2)
+
+    # Initialize object and add categories
+    print(2)
+    ae2 = Appevents(data2, add_categories=True)
+
+    # Initialize object by adding more data (in this case data2 and data3)
+    print(3)
     ae3 = ae.merge(data2, data3)
