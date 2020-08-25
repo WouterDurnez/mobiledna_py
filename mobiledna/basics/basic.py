@@ -33,11 +33,11 @@ def count_days(df: pd.DataFrame, index='appevents') -> pd.Series:
     """
     Count number of count_days for which logs exist
 
-    :param df: appevents data frame
+    :param df: appevents __data__ frame
     :return: day count (Series)
     """
 
-    # Check data frame type
+    # Check __data__ frame type
     check_index(df=df, index=index, ignore_error=True)
 
     if index in ('appevents', 'sessions'):
@@ -58,11 +58,11 @@ def count_events(df: pd.DataFrame) -> pd.Series:
     """
     Count number of appevents
 
-    :param df: appevents data frame
+    :param df: appevents __data__ frame
     :return: count of appevents (Series).
     """
 
-    # Check data frame type
+    # Check __data__ frame type
     check_index(df=df, index='appevents', ignore_error=True)
 
     # Get number of rows per ID
@@ -74,11 +74,11 @@ def active_screen_time(df: pd.DataFrame) -> pd.Series:
     """
     Count screen time spent on appevent activity
 
-    :param df: appevents data frame
+    :param df: appevents __data__ frame
     :return: appevent screen time (Series).
     """
 
-    # Check data frame type
+    # Check __data__ frame type
     check_index(df=df, index='appevents', ignore_error=True)
 
     # Check if duration column is there...
@@ -99,11 +99,11 @@ def count_sessions(df: pd.DataFrame) -> pd.Series:
     """
     Count number of sessions
 
-    :param df: sessions data frame
+    :param df: sessions __data__ frame
     :return: count of sessions (Series)
     """
 
-    # Check data frame type
+    # Check __data__ frame type
     check_index(df=df, index='sessions', ignore_error=True)
 
     # Remove rows with deactivation
@@ -118,10 +118,10 @@ def screen_time(df: pd.DataFrame) -> pd.Series:
     """
     Get overall screen time from sessions index
 
-    :param df: sessions data frame
+    :param df: sessions __data__ frame
     :return: screen time (Series)
     """
-    # Check data frame type
+    # Check __data__ frame type
     check_index(df=df, index='sessions', ignore_error=True)
 
     # Check if duration column is there...
@@ -139,7 +139,7 @@ def screen_time(df: pd.DataFrame) -> pd.Series:
 
 if __name__ == "__main__":
     hlp.hi()
-    hlp.set_param(log_level=3, data_dir='../../data/glance/appevents')
+    hlp.set_param(log_level=3, data_dir='../../__data__/glance/appevents')
     df = hlp.load(path=join(hlp.DATA_DIR, '0a48d1e8-ead2-404a-a5a2-6b05371200b1_appevents.parquet'), index='appevents')
 
     df = hlp.add_dates(df, index='appevents')

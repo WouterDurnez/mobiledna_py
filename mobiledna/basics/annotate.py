@@ -30,16 +30,16 @@ from mobiledna.basics.help import log
 
 def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, list):
     """
-    Scrape app meta data from Google play store.
+    Scrape app meta __data__ from Google play store.
 
     :param app_name: the official app name (e.g., com.facebook.katana)
-    :return: dict with meta data for apps that got a hit, list with remaining apps
+    :return: dict with meta __data__ for apps that got a hit, list with remaining apps
     """
 
     try:
         cache = np.load(file=join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item()
     except:
-        log('No cache was found for app meta data.', lvl=3)
+        log('No cache was found for app meta __data__.', lvl=3)
 
     # Play store URL prefix
     play_store_url = 'https://play.google.com/store/apps/details?id='
@@ -81,7 +81,7 @@ def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, li
         # Get attributes
         try:
 
-            # Store all meta data for this app here
+            # Store all meta __data__ for this app here
             meta = {'source': 'play_store'}
 
             # Find the name
@@ -118,7 +118,7 @@ def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, li
                 meta['rating'] = rating.text
 
             # Add it to the big dict (lol)
-            log(f'Got it! <{app_name}> meta data was scraped.', lvl=3)
+            log(f'Got it! <{app_name}> meta __data__ was scraped.', lvl=3)
             known_apps[app_name] = meta
 
         except Exception as e:
@@ -141,7 +141,7 @@ def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, li
         else:
             known_apps = {**cache, **known_apps}
 
-    # Store app meta data cache
+    # Store app meta __data__ cache
     np.save(file=join(pardir, pardir, 'cache', 'app_meta.npy'), arr=known_apps)
 
     return known_apps, unknown_apps
@@ -149,23 +149,23 @@ def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, li
 
 def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFrame:
     """
-    Take a data frame and annotate rows with category field, based on application name.
+    Take a __data__ frame and annotate rows with category field, based on application name.
 
-    :param df: data frame (appevents or notifications)
-    :param scrape: scrape Play Store for new info (set to True if no meta data is found)
-    :return: Annotated data frame
+    :param df: __data__ frame (appevents or notifications)
+    :param scrape: scrape Play Store for new info (set to True if no meta __data__ is found)
+    :return: Annotated __data__ frame
     """
 
-    # Load app meta data
+    # Load app meta __data__
     try:
         meta = np.load(join(pardir, pardir, 'cache', 'app_meta.npy'), allow_pickle=True).item()
     except Exception as e:
-        log('No app meta data found. Scraping Play store.', lvl=1)
+        log('No app meta __data__ found. Scraping Play store.', lvl=1)
         scrape = True
 
-    # Check if data frame has an application field
+    # Check if __data__ frame has an application field
     if 'application' not in df:
-        raise Exception('Cannot find <application> column in data frame!')
+        raise Exception('Cannot find <application> column in __data__ frame!')
 
     # Scape the Play store if requested
     if scrape:
@@ -193,23 +193,23 @@ if __name__ == '__main__':
     hlp.hi()
     hlp.set_dir(join(pardir, pardir, 'cache'))
     hlp.set_param(log_level=1,
-                  data_dir=join(pardir, pardir, 'data', 'glance', 'processed_appevents'),
+                  data_dir=join(pardir, pardir, '__data__', 'glance', 'processed_appevents'),
                   cache_dir=join(pardir, pardir, 'cache'))
 
-    # Load the data and gather apps
+    # Load the __data__ and gather apps
     log('Collecting app names.', lvl=1)
     appevents_files = listdir(hlp.DATA_DIR)
     apps = {}
 
     for appevents_file in tqdm(appevents_files[0:3]):
-        # Load data
+        # Load __data__
         data = hlp.load(path=join(hlp.DATA_DIR, appevents_file), index='appevents')
 
         # Add apps to the set (no duplicates)
         app_counts = Counter(list(data.application))
         apps = {**apps, **app_counts}
 
-    # Sort apps by number of times they occurred in data
+    # Sort apps by number of times they occurred in __data__
     apps = {k: v for k, v in sorted(apps.items(), key=lambda item: item[1], reverse=True)}
 
     data2 = add_category(df=data, scrape=True, overwrite=False)

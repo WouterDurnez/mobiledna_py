@@ -46,7 +46,7 @@ es = None
 
 def connect(server=cfg.server, port=cfg.port) -> Elasticsearch:
     """
-    Establish connection with data.
+    Establish connection with __data__.
 
     :param server: server address
     :param port: port to go through
@@ -74,7 +74,7 @@ def connect(server=cfg.server, port=cfg.port) -> Elasticsearch:
 
 def ids_from_file(dir: str, file_name='ids', file_type='csv') -> list:
     """
-    Read IDs from file. Use this if you want to get data from specific
+    Read IDs from file. Use this if you want to get __data__ from specific
     users, and you have their listed their IDs in a file.
 
     :param dir: directory to find file in
@@ -104,7 +104,7 @@ def ids_from_server(index="appevents",
     Fetch IDs from server. Returns dict of user IDs and count.
     Can be based on appevents, sessions, notifications, or logs.
 
-    :param index: type of data
+    :param index: type of __data__
     :param time_range: time period in which to search
     :return: dict of user IDs and counts of entries
     """
@@ -157,7 +157,7 @@ def ids_from_server(index="appevents",
         }
 
     except:
-        raise Warning("WARNING: Failed to restrict range. Getting all data.")
+        raise Warning("WARNING: Failed to restrict range. Getting all __data__.")
 
     # Search using scroller (avoid overload)
     res = es.search(index='mobiledna',
@@ -187,15 +187,15 @@ def ids_from_server(index="appevents",
 def common_ids(index="appevents",
                time_range=('2018-01-01T00:00:00.000', '2020-01-01T00:00:00.000')) -> dict:
     """
-    This function attempts to find those IDs which have the most complete data, since there have been
-    problems in the past where not all data get sent to the server (e.g., no notifications were registered).
+    This function attempts to find those IDs which have the most complete __data__, since there have been
+    problems in the past where not all __data__ get sent to the server (e.g., no notifications were registered).
     The function returns a list of IDs that occur in each index (apart from the logs, which may occur only
     once at the start of logging, and fall out of the time range afterwards).
 
     The function returns a dictionary, where keys are the detected IDs, and values correspond with
     the number of entries in an index of our choosing.
 
-    :param index: index in which to count entries for IDs that have data in each index
+    :param index: index in which to count entries for IDs that have __data__ in each index
     :param time_range: time period in which to search
     :return: dictionary with IDs for keys, and index entries for values
     """
@@ -246,17 +246,17 @@ def random_ids(ids: dict, n=100) -> dict:
 
 
 ###########################################
-# Functions to get data, based on id list #
+# Functions to get __data__, based on id list #
 ###########################################
 
 def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01-01T00:00:00.000')) -> dict:
     """
-    Fetch data from server, for given ids, within certain timeframe.
+    Fetch __data__ from server, for given ids, within certain timeframe.
 
-    :param index: type of data we will gather
-    :param ids: only gather data for these IDs
+    :param index: type of __data__ we will gather
+    :param ids: only gather __data__ for these IDs
     :param time_range: only look in this time range
-    :return: dict containing data (ES JSON format)
+    :return: dict containing __data__ (ES JSON format)
     """
     global es
 
@@ -266,7 +266,7 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
 
     # Are we looking for the right INDICES?
     if index not in indices:
-        raise Exception("Can't fetch data for anything other than appevents,"
+        raise Exception("Can't fetch __data__ for anything other than appevents,"
                         " notifications or sessions (or logs, but whatever).")
 
     count_tot = es.count(index="mobiledna", doc_type=index)
@@ -284,10 +284,10 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
         # Save all results in dict, with ID as key
         dump_dict = {}
 
-        # Go over IDs and try to fetch data
+        # Go over IDs and try to fetch __data__
         for idx, id in enumerate(ids):
 
-            log("Getting data: ID {id_index}/{total_ids}: \t{id}".format(
+            log("Getting __data__: ID {id_index}/{total_ids}: \t{id}".format(
                 id_index=idx + 1,
                 total_ids=len(ids),
                 id=id))
@@ -299,7 +299,7 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
 
         return dump_dict
 
-    # If there's one ID, fetch data
+    # If there's one ID, fetch __data__
     else:
 
         # Base query
@@ -338,7 +338,7 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
             body['query']['constant_score']['filter']['bool']['must'].append(range_restriction)
 
         except:
-            log("WARNING: Failed to restrict range. Getting all data.", lvl=1)
+            log("WARNING: Failed to restrict range. Getting all __data__.", lvl=1)
 
         # Count entries
         count_ids = es.count(index="mobiledna", doc_type=index, body=body)
@@ -360,7 +360,7 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
         # Save all results in list
         dump = res['hits']['hits']
 
-        # Get data
+        # Get __data__
         temp_size = total_size
 
         ct = 0
@@ -382,16 +382,16 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
 
 
 #################################################
-# Functions to export data to csv and/or pickle #
+# Functions to export __data__ to csv and/or pickle #
 #################################################
 
 def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv_file=False, parquet=False):
     """
-    Export data to file type (standard CSV file, pickle possible).
+    Export __data__ to file type (standard CSV file, pickle possible).
 
-    :param dir: location to export data to
+    :param dir: location to export __data__ to
     :param name: filename
-    :param index: type of data
+    :param index: type of __data__
     :param data: ElasticSearch dump
     :param pickle: would you like that pickled, Ma'am? (bool)
     :param csv_file: export as CSV file (bool, default)
@@ -402,35 +402,35 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
     # Does the directory exist? If not, make it
     hlp.set_dir(dir)
 
-    # Did we get data?
+    # Did we get __data__?
     if data is None:
-        raise Exception("ERROR: Received empty data. Failed to export.")
+        raise Exception("ERROR: Received empty __data__. Failed to export.")
 
-    # Gather data for data frame export
+    # Gather __data__ for __data__ frame export
     to_export = []
     for id, d in data.items():
 
-        # Check if we got data!
+        # Check if we got __data__!
         if not d:
-            log(f"WARNING: Did not receive data for {id}!", lvl=1)
+            log(f"WARNING: Did not receive __data__ for {id}!", lvl=1)
             continue
 
         for dd in d:
             to_export.append(dd['_source'])
 
-    # If there's no data...
+    # If there's no __data__...
     if not to_export:
 
-        log(f"WARNING: No data to export!", lvl=1)
+        log(f"WARNING: No __data__ to export!", lvl=1)
 
     else:
-        # ...else, convert to formatted data frame
+        # ...else, convert to formatted __data__ frame
         df = hlp.format_data(pd.DataFrame(to_export), index)
 
         # Set file name (and have it mention its type for clarity)
         new_name = name + "_" + index
 
-        # Save the data frame
+        # Save the __data__ frame
         hlp.save(df=df, dir=dir, name=new_name, csv_file=csv_file, pickle=pickle, parquet=parquet)
 
 
@@ -445,12 +445,12 @@ def pipeline(name: str, ids: list, dir: str,
              subfolder=False,
              pickle=False, csv_file=True, parquet=False):
     """
-    Get data across multiple INDICES. By default, they are stored in the same folder.
+    Get __data__ across multiple INDICES. By default, they are stored in the same folder.
 
     :param name: name of dataset
     :param ids: IDs in dataset
-    :param dir: directory in which to store data
-    :param indices: types of data to gather (default: all)
+    :param dir: directory in which to store __data__
+    :param indices: types of __data__ to gather (default: all)
     :param time_range: only look in this time range
     :param pickle: (bool) export as pickle (default = False)
     :param csv_file: (bool) export as CSV file (default = True)
@@ -462,16 +462,16 @@ def pipeline(name: str, ids: list, dir: str,
         time_range=time_range
     ))
 
-    # All data
+    # All __data__
     all_df = {}
 
     # Go over interesting INDICES
     for index in indices:
-        # Get data from server
+        # Get __data__ from server
         log("Getting started on <" + index + ">...", lvl=1)
         data = fetch(index=index, ids=ids, time_range=time_range)
 
-        # Export data
+        # Export __data__
         log("Exporting <" + index + ">...", lvl=1)
 
         # If requested, add to different subfolder
@@ -500,11 +500,11 @@ def split_pipeline(ids: list, dir: str,
                    subfolder=True,
                    pickle=False, csv_file=False, parquet=True) -> list:
     """
-    Get data across INDICES, but split up per ID. By default, create subfolders.
+    Get __data__ across INDICES, but split up per ID. By default, create subfolders.
 
     :param ids: IDs in dataset
-    :param dir: directory in which to store data
-    :param indices: types of data to gather (default: all)
+    :param dir: directory in which to store __data__
+    :param indices: types of __data__ to gather (default: all)
     :param time_range:
     :param pickle:
     :param csv_file:
@@ -534,7 +534,7 @@ def split_pipeline(ids: list, dir: str,
                      pickle=pickle,
                      csv_file=csv_file)
         except Exception as e:
-            log(f"Failed to get data for {id}: {e}", lvl=1)
+            log(f"Failed to get __data__ for {id}: {e}", lvl=1)
             failed.append(id)
 
     log("\nALL DONE!\n")

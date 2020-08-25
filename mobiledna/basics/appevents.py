@@ -31,18 +31,6 @@ class Appevents:
 
     def __init__(self, data: pd.DataFrame = None, add_categories=False, get_session_sequences=False):
 
-        # Meta variables #
-        ##################
-
-        self.__users__ = None
-        self.__days__ = None
-        self.__events__ = None
-        self.__durations__ = None
-        self.__id_factorization__ = None
-        self.__app_factorization__ = None
-        self.__model_factorization__ = None
-        self.__session_factorization__ = None
-
         # Set dtypes #
         ##############
 
@@ -68,30 +56,29 @@ class Appevents:
         # Factorize sessions
         # data.session = data.session.astype('category')
 
+        # Sort data frame
+        data.sort_values(by=['id', 'startTime'], inplace=True)
+
         # Set data attribute
-        self.data = data
+        self.__data__ = data
 
         # Add date columns
-        self.data = hlp.add_dates(df=self.data, index='appevents')
+        self.__data__ = hlp.add_dates(df=self.__data__, index='appevents')
 
         # Add duration columns
-        self.data = hlp.add_duration(df=self.data)
+        self.__data__ = hlp.add_duration(df=self.__data__)
 
         # Add categories
         if add_categories:
             self.add_category()
 
         # Initialize attributes
-        self.__users__ = self.get_users()
-        self.__days__ = self.get_days()
-        self.__events__ = self.get_events()
-        self.__durations__ = self.get_durations()
         self.__session_sequences__ = self.get_session_sequences() if get_session_sequences else None
 
     @classmethod
     def load(cls, path: str, file_type='infer', sep=',', decimal='.'):
         """
-        Construct Appevents object from CSV file.
+        Construct Appevents object from path
 
         :param path: path to the file
         :param file_type: file extension (csv, parquet, or pickle)
@@ -139,21 +126,21 @@ class Appevents:
         if category:
             categories = [category] if not isinstance(category, list) else category
 
-            if 'category' not in self.data.columns:
+            if 'category' not in self.__data__.columns:
                 self.add_category()
 
             # ... and filter
-            data = self.data.loc[self.data.category.isin(categories)]
+            data = self.__data__.loc[self.__data__.category.isin(categories)]
 
         # If we want application-level info
         elif application:
             applications = [application] if not isinstance(application, list) else application
 
             # ... filter
-            data = self.data.loc[self.data.application.isin(applications)]
+            data = self.__data__.loc[self.__data__.application.isin(applications)]
 
         else:
-            data = self.data
+            data = self.__data__
 
         return data
 
@@ -165,13 +152,13 @@ class Appevents:
         :return: new Appevents object
         """
 
-        new_data = pd.concat([self.data, *appevents], sort=False)
+        new_data = pd.concat([self.__data__, *appevents], sort=False)
 
         return Appevents(data=new_data)
 
     def add_category(self, scrape=False, overwrite=False):
 
-        self.data = add_category(df=self.data, scrape=scrape, overwrite=overwrite)
+        self.__data__ = add_category(df=self.__data__, scrape=scrape, overwrite=overwrite)
 
     # Getters #
     ###########
@@ -180,33 +167,33 @@ class Appevents:
         """
         Returns a list of unique users
         """
-        return list(self.data.id.unique())
+        return list(self.__data__.id.unique())
 
     def get_applications(self) -> dict:
         """
         Returns an {app: app count} dictionary
         """
 
-        return Counter(list(self.data.application))
+        return Counter(list(self.__data__.application))
 
     def get_days(self) -> pd.Series:
         """
         Returns the number of unique days
         """
-        return self.data.groupby('id').startDate.nunique().rename('days')
+        return self.__data__.groupby('id').startDate.nunique().rename('days')
 
     def get_events(self) -> pd.Series:
         """
         Returns the number of appevents
         """
 
-        return self.data.groupby('id').application.count().rename('events')
+        return self.__data__.groupby('id').application.count().rename('events')
 
     def get_durations(self) -> pd.Series:
         """
         Returns the total duration
         """
-        return self.data.groupby('id').duration.sum().rename('durations')
+        return self.__data__.groupby('id').duration.sum().rename('durations')
 
     def get_session_sequences(self) -> list:
         """
@@ -215,11 +202,11 @@ class Appevents:
 
         sessions = []
 
-        t_sessions = tqdm(self.data.session.unique())
+        t_sessions = tqdm(self.__data__.session.unique())
         t_sessions.set_description('Extracting sessions')
 
         for session in t_sessions:
-            sessions.append(tuple(self.data.loc[self.data.session == session].application))
+            sessions.append(tuple(self.__data__.loc[self.__data__.session == session].application))
 
         return sessions
 
@@ -268,7 +255,7 @@ class Appevents:
                 (f'_{category}' if category else '') +
                 (f'_{application}' if application else '')).lower()
 
-        # Filter data on request
+        # Filter __data__ on request
         data = self.filter(category=category, application=application)
 
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
@@ -284,30 +271,30 @@ class Appevents:
                 (f'_{category}' if category else '') +
                 (f'_{application}' if application else '')).lower()
 
-        # Filter data on request
+        # Filter __data__ on request
         data = self.filter(category=category, application=application)
 
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
-            groupby('id').duration.std().rename('daily_duration_sd')
+            groupby('id').duration.std().rename(name)
 
-    def get_sessions_starting_with(self, application=None):
+    def get_sessions_starting_with(self, category=None, application=None, normalize=False):
 
-        positive_sessions = []
+        # Field name
+        name = ('sessions_starting_with' +
+                (f'_{category}' if category else '') +
+                (f'_{application}' if application else '')).lower()
 
-        if not self.__session_sequences__:
-            self.__session_sequences__ = self.get_session_sequences()
+        if category:
+            categories = [category] if not isinstance(category, list) else category
 
-        t_sessions = tqdm(self.__session_sequences__)
-        t_sessions.set_description('Processing sessions')
+            return (self.__data__.groupby(['id', 'session']).category.first().isin(categories)). \
+                groupby('id').value_counts(normalize=normalize).rename(name)
 
-        for session in t_sessions:
+        if application:
+            applications = [application] if not isinstance(application, list) else application
 
-            if application:
-                applications = application if isinstance(application, list) else [application]
-                if session[0] in applications:
-                    positive_sessions.append(session)
-
-        return positive_sessions
+            return (self.__data__.groupby(['id', 'session']).application.first().isin(applications)). \
+                groupby('id').value_counts(normalize=normalize).rename(name)
 
 
 if __name__ == "__main__":
