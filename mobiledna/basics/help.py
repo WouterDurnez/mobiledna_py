@@ -32,7 +32,7 @@ pp = PrettyPrinter(indent=4)
 
 # Set log level (1 = only top level log messages -> 3 = all log messages)
 LOG_LEVEL = 3
-DATA_DIR = os.path.join(os.pardir, os.pardir, '__data__')
+DATA_DIR = os.path.join(os.pardir, os.pardir, 'data')
 CACHE_DIR = os.path.join(os.pardir, os.pardir, 'cache')
 INDICES = {'notifications', 'appevents', 'sessions', 'logs', 'connectivity'}
 INDEX_FIELDS = {
@@ -92,7 +92,7 @@ def set_param(log_level=None, data_dir=None, cache_dir=None):
     Set mobileDNA parameters.
 
     :param log_level: new value for log level
-    :param data_dir: new __data__ directory
+    :param data_dir: new data directory
     """
 
     # Declare these variables to be global
@@ -104,7 +104,7 @@ def set_param(log_level=None, data_dir=None, cache_dir=None):
     if log_level:
         LOG_LEVEL = log_level
 
-    # Set new __data__ directory
+    # Set new data directory
     if data_dir:
         DATA_DIR = data_dir
 
@@ -255,8 +255,8 @@ def hi():
     print("DATA_DIR is set to {}".format(DATA_DIR))
     print()
 
-    # Set this warning if you intend to keep working on the same __data__ frame,
-    # and you're not too worried about messing up the raw __data__.
+    # Set this warning if you intend to keep working on the same data frame,
+    # and you're not too worried about messing up the raw data.
     pd.set_option('chained_assignment', None)
 
     # Set a random seed
@@ -269,10 +269,10 @@ def hi():
 
 def check_index(df: pd.DataFrame, index: str, ignore_error=False) -> bool:
     """
-    Checks if a __data__ frame is indeed of the right index type.
+    Checks if a data frame is indeed of the right index type.
 
-    :param df: __data__ frame that will be checked
-    :param index: type of __data__ that is expected
+    :param df: data frame that will be checked
+    :param index: type of data that is expected
     :return: (bool) checks out (True) or doesn't (False)
     """
 
@@ -288,18 +288,18 @@ def check_index(df: pd.DataFrame, index: str, ignore_error=False) -> bool:
         'logs': 'date'
     }
 
-    # Check what type of __data__ we're dealing with in reality
+    # Check what type of data we're dealing with in reality
     true_index = None
 
-    # Go over unique columns, and check if they're in our __data__ frame
+    # Go over unique columns, and check if they're in our data frame
     for unique_key in unique_columns.keys():
 
-        # If they are, that's the type of __data__ frame we're dealing with
+        # If they are, that's the type of data frame we're dealing with
         if unique_columns[unique_key] in df:
             true_index = unique_key
             break
 
-    # If our __data__ type is not what we expected, return False (or throw an error)
+    # If our data type is not what we expected, return False (or throw an error)
     if true_index != index:
         if ignore_error:
             log(f"Unexpected index! Expected <{index}>, but got <{true_index}>.", lvl=3)
@@ -313,12 +313,12 @@ def check_index(df: pd.DataFrame, index: str, ignore_error=False) -> bool:
 
 def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
     """
-    Set the __data__ types of each column in a __data__ frame, depending on the index.
+    Set the data types of each column in a data frame, depending on the index.
     This is done to save memory.
 
-    :param df: __data__ frame to format
-    :param index: type of __data__
-    :return: formatted __data__ frame
+    :param df: data frame to format
+    :param index: type of data
+    :return: formatted data frame
     """
 
     # Check if index is valid
@@ -327,7 +327,7 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
 
     elif index == 'appevents':
 
-        # Reformat __data__ version (trying to convert to int)
+        # Reformat data version (trying to convert to int)
         df.data_version = pd.to_numeric(df.data_version, downcast='float')
 
         # Format timestamps
@@ -361,7 +361,7 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
         # Convert to timestamp
         df['timestamp'] = df.timestamp.astype('datetime64[ns]')
 
-        # Sort __data__ frame
+        # Sort data frame
         df.sort_values(by=['id', 'timestamp'], inplace=True)
         df.reset_index(drop=True, inplace=True)
         df.rename(columns={'timestamp': 'startTime'}, inplace=True)
@@ -392,13 +392,13 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
 
 def add_duration(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculate app event duration and add to (new) __data__ frame.
+    Calculate app event duration and add to (new) data frame.
 
-    :param df: __data__ frame to process (should be appevents or sessions index)
-    :return: modified __data__ frame
+    :param df: data frame to process (should be appevents or sessions index)
+    :return: modified data frame
     """
 
-    # Check if __data__ contains necessary columns
+    # Check if data contains necessary columns
     if 'startTime' not in df.columns or \
             'endTime' not in df.columns:
         raise Exception("ERROR: Necessary columns missing!")
@@ -420,9 +420,9 @@ def add_dates(df: pd.DataFrame, index: str) -> pd.DataFrame:
     """
     Get dates from datetime columns and add them as new column.
 
-    :param df: __data__ frame to process
-    :param index: type of __data__
-    :return: adjusted __data__ frame
+    :param df: data frame to process
+    :param index: type of data
+    :return: adjusted data frame
     """
     if index == 'appevents' or index == 'sessions':
 
@@ -441,10 +441,10 @@ def add_dates(df: pd.DataFrame, index: str) -> pd.DataFrame:
 
 def get_unique(column: str, df: pd.DataFrame) -> np.ndarray:
     """
-    Get list of unique column values in given __data__ frame.
+    Get list of unique column values in given data frame.
 
     :param column: column to sift through
-    :param df: __data__ frame to look in
+    :param df: data frame to look in
     :return: unique values in given column
     """
 
@@ -462,9 +462,9 @@ def get_unique(column: str, df: pd.DataFrame) -> np.ndarray:
 
 def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, parquet=False):
     """
-    Wrapper function to save mobileDNA __data__ frames.
+    Wrapper function to save mobileDNA data frames.
 
-    :param df: __data__ to store on disk
+    :param df: data to store on disk
     :param dir: location to store it in
     :param name: name of the file
     :param csv_file: save in CSV format (bool)
@@ -482,11 +482,11 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
         try:
 
             df.to_csv(path_or_buf=path + ".csv", sep=";", decimal='.')
-            log("Saved __data__ frame to {}".format(path + ".csv_file"))
+            log("Saved data frame to {}".format(path + ".csv_file"))
 
         except Exception as e:
 
-            log("ERROR: Failed to store __data__ frame as CSV! {e}".format(e=e), lvl=1)
+            log("ERROR: Failed to store data frame as CSV! {e}".format(e=e), lvl=1)
 
     # Store to pickle
     if pickle:
@@ -494,43 +494,43 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
         try:
 
             df.to_pickle(path=path + ".pkl")
-            log("Saved __data__ frame to {}".format(path + ".pkl"))
+            log("Saved data frame to {}".format(path + ".pkl"))
 
         except Exception as e:
 
-            log("ERROR: Failed to pickle __data__ frame! {e}".format(e=e), lvl=1)
+            log("ERROR: Failed to pickle data frame! {e}".format(e=e), lvl=1)
 
     # Store to parquet
     if parquet:
 
         try:
             df.to_parquet(fname=path + ".parquet", engine='auto', compression='snappy')
-            log("Saved __data__ frame to {}".format(path + ".parquet"))
+            log("Saved data frame to {}".format(path + ".parquet"))
 
         except Exception as e:
 
-            log("ERROR: Failed to store __data__ frame as parquet! {e}".format(e=e), lvl=1)
+            log("ERROR: Failed to store data frame as parquet! {e}".format(e=e), lvl=1)
 
 
 @time_it
 def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataFrame:
     """
-    Wrapper function to load mobileDNA __data__ frames.
+    Wrapper function to load mobileDNA data frames.
 
-    :param path: location of __data__ frame
-    :param index: type of mobileDNA __data__
+    :param path: location of data frame
+    :param index: type of mobileDNA data
     :param file_type: file type (default: infer from path, other options: pickle, csv, or parquet)
     :param sep: field separator
     :param dec: decimal symbol
-    :param format: format __data__ frame to save space (watch out for redundant formatting!)
-    :return: __data__ frame
+    :param format: format data frame to save space (watch out for redundant formatting!)
+    :return: data frame
     """
 
     # Check if index is valid
     if index not in INDICES:
         raise Exception("Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', or 'logs'.")
 
-    # Load __data__ frame, depending on file type
+    # Load data frame, depending on file type
     if file_type == 'infer':
 
         # Get extension

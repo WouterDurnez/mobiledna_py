@@ -120,7 +120,7 @@ class Appevents:
 
         return cls(data=data)
 
-    def filter(self, category=None, application=None):
+    def filter(self, category=None, application=None, from_push=None):
 
         # If we want category-specific info, make sure we have category column
         if category:
@@ -142,6 +142,9 @@ class Appevents:
         else:
             data = self.__data__
 
+        if from_push:
+            data = data.loc[data.notification == from_push]
+
         return data
 
     def merge(self, *appevents: pd.DataFrame):
@@ -162,6 +165,12 @@ class Appevents:
 
     # Getters #
     ###########
+
+    def get_data(self) -> pd.DataFrame:
+        """
+        Return appevents data frame
+        """
+        return self.__data__
 
     def get_users(self) -> list:
         """
@@ -213,7 +222,7 @@ class Appevents:
     # Compound getters #
     ####################
 
-    def get_daily_events(self, category=None, application=None) -> pd.Series:
+    def get_daily_events(self, category=None, application=None, from_push=None) -> pd.Series:
         """
         Returns number of appevents per day
         """
@@ -224,12 +233,12 @@ class Appevents:
                 (f'_{application}' if application else '')).lower()
 
         # Filter data on request
-        data = self.filter(category=category, application=application)
+        data = self.filter(category=category, application=application, from_push=from_push)
 
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
             groupby('id').application.mean().rename(name)
 
-    def get_daily_durations(self, category=None, application=None) -> pd.Series:
+    def get_daily_durations(self, category=None, application=None, from_push=None) -> pd.Series:
         """
         Returns duration per day
         """
@@ -240,12 +249,12 @@ class Appevents:
                 (f'_{application}' if application else '')).lower()
 
         # Filter data on request
-        data = self.filter(category=category, application=application)
+        data = self.filter(category=category, application=application, from_push=from_push)
 
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.mean().rename(name)
 
-    def get_daily_events_sd(self, category=None, application=None) -> pd.Series:
+    def get_daily_events_sd(self, category=None, application=None, from_push=None) -> pd.Series:
         """
         Returns standard deviation on number of events per day
         """
@@ -256,12 +265,12 @@ class Appevents:
                 (f'_{application}' if application else '')).lower()
 
         # Filter __data__ on request
-        data = self.filter(category=category, application=application)
+        data = self.filter(category=category, application=application, from_push=from_push)
 
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
             groupby('id').application.std().rename(name)
 
-    def get_daily_durations_sd(self, category=None, application=None) -> pd.Series:
+    def get_daily_durations_sd(self, category=None, application=None, from_push=None) -> pd.Series:
         """
         Returns duration per day
         """
@@ -272,7 +281,7 @@ class Appevents:
                 (f'_{application}' if application else '')).lower()
 
         # Filter __data__ on request
-        data = self.filter(category=category, application=application)
+        data = self.filter(category=category, application=application, from_push=from_push)
 
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.std().rename(name)

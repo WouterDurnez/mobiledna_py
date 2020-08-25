@@ -97,7 +97,7 @@ class Notifications:
 
         return cls(data=data)
 
-    def filter(self, category=None, application=None):
+    def filter(self, category=None, application=None, priority=None, posted=True):
 
         # If we want category-specific info, make sure we have category column
         if category:
@@ -119,6 +119,14 @@ class Notifications:
         else:
             data = self.__data__
 
+        # Filter on whether notification was posted
+        if posted:
+            data = data.loc[data.posted == posted]
+
+        # Filter on priority
+        if priority:
+            data = data.loc[data.priority >= priority]
+
         return data
 
     def merge(self, *notifications: pd.DataFrame):
@@ -139,6 +147,12 @@ class Notifications:
 
     # Getters #
     ###########
+
+    def get_data(self) -> pd.DataFrame:
+        """
+        Return notifications data frame
+        """
+        return self.__data__
 
     def get_users(self) -> list:
         """
@@ -169,34 +183,34 @@ class Notifications:
     # Compound getters #
     ####################
 
-    def get_daily_notifications(self, category=None, application=None) -> pd.Series:
+    def get_daily_notifications(self, category=None, application=None, priority=0, posted=True) -> pd.Series:
         """
         Returns number of notifications per day
         """
 
         # Field name
-        name = ('daily_events' +
+        name = ('daily_notifications' +
                 (f'_{category}' if category else '') +
                 (f'_{application}' if application else '')).lower()
 
         # Filter data on request
-        data = self.filter(category=category, application=application)
+        data = self.filter(category=category, application=application, priority=priority, posted=posted)
 
         return data.groupby(['id', 'date']).application.count().reset_index(). \
             groupby('id').application.mean().rename(name)
 
-    def get_daily_notifications_sd(self, category=None, application=None) -> pd.Series:
+    def get_daily_notifications_sd(self, category=None, application=None, priority=0, posted=True) -> pd.Series:
         """
         Returns standard deviation on number of events per day
         """
 
         # Field name
-        name = ('daily_events_sd' +
+        name = ('daily_notifications_sd' +
                 (f'_{category}' if category else '') +
                 (f'_{application}' if application else '')).lower()
 
         # Filter __data__ on request
-        data = self.filter(category=category, application=application)
+        data = self.filter(category=category, application=application, priority=priority, posted=posted)
 
         return data.groupby(['id', 'date']).application.count().reset_index(). \
             groupby('id').application.std().rename(name)
