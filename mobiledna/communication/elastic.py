@@ -557,7 +557,7 @@ if __name__ in ['__main__', 'builtins']:
     split_pipeline(ids=ids, subfolder=True,
                    dir=os.path.join(hlp.DATA_DIR, 'glance'),
                    time_range=time_range,
-                   indices=('appevents', 'sessions'),
+                   indices=(['notifications']),
                    parquet=True,
                    csv_file=False)
 

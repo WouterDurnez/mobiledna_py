@@ -1,3 +1,18 @@
+# -*- coding: utf-8 -*-
+
+"""
+    __  ___      __    _ __     ____  _   _____
+   /  |/  /___  / /_  (_) /__  / __ \/ | / /   |
+  / /|_/ / __ \/ __ \/ / / _ \/ / / /  |/ / /| |
+ / /  / / /_/ / /_/ / / /  __/ /_/ / /|  / ___ |
+/_/  /_/\____/_.___/_/_/\___/_____/_/ |_/_/  |_|
+
+APPEVENTS CLASS
+
+-- Coded by Kyle Van Gaeveren & Wouter Durnez
+-- mailto:Wouter.Durnez@UGent.be
+"""
+
 import pandas as pd
 
 import mobiledna.basics.help as hlp
@@ -6,6 +21,7 @@ from mobiledna.basics.help import log
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
+
 
 class Sessions:
 
@@ -91,6 +107,15 @@ class Sessions:
 
         return Sessions(data=new_data)
 
+    # Getters #
+    ###########
+
+    def get_data(self) -> pd.DataFrame:
+        """
+        Return sessions data frame
+        """
+        return self.__data__
+
     def get_users(self) -> list:
         """
         Returns a list of unique users
@@ -107,14 +132,16 @@ class Sessions:
         """
         Returns the number of sessions
         """
-
-        return self.__data__ .groupby('id')['session on'].count().rename('sessions')
+        return self.__data__.groupby('id')['startTime'].count().rename('sessions')
 
     def get_durations(self) -> pd.Series:
         """
         Returns the total duration
         """
         return self.__data__ .groupby('id').duration.sum().rename('durations')
+
+    # Compound getters #
+    ####################
 
     def get_daily_sessions(self) -> pd.Series:
         """
@@ -124,8 +151,8 @@ class Sessions:
         # Field name
         name = 'daily_sessions'
 
-        return self.__data__.groupby(['id', 'startDate'])['session on'].count().reset_index(). \
-            groupby('id')['session on'].mean().rename(name)
+        return self.__data__.groupby(['id', 'startDate'])['startTime'].count().reset_index(). \
+            groupby('id')['startTime'].mean().rename(name)
 
     def get_daily_durations(self) -> pd.Series:
         """
@@ -138,7 +165,7 @@ class Sessions:
         return self.__data__.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.mean().rename(name)
 
-    def get_daily_events_sd(self) -> pd.Series:
+    def get_daily_sessions_sd(self) -> pd.Series:
         """
         Returns standard deviation on number of sessions per day
         """
@@ -146,8 +173,8 @@ class Sessions:
         # Field name
         name = 'daily_events_sd'
 
-        return self.__data__.groupby(['id', 'startDate'])['session on'].count().reset_index(). \
-            groupby('id')['session on'].std().rename(name)
+        return self.__data__.groupby(['id', 'startDate'])['startTime'].count().reset_index(). \
+            groupby('id')['startTime'].std().rename(name)
 
     def get_daily_durations_sd(self) -> pd.Series:
         """
@@ -160,13 +187,23 @@ class Sessions:
         return self.__data__.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.std().rename(name)
 
+
 if __name__ == "__main__":
-        ###########
+    ###########
         # EXAMPLE #
         ###########
 
         hlp.hi()
         hlp.set_param(log_level=1)
 
-        # se = Sessions.load(path="../../data/sessions.csv", sep=";")
-        # print(se.__data__.head())
+    data = hlp.load(path='../../data/glance/sessions/0a9e1d70-fd9e-47a7-a765-d608587f63d7_sessions.parquet',
+                    index='sessions')
+
+    se = Sessions(data=data)
+    se2 = Sessions.load(path="../../data/glance/sessions/0a0fe3ed-d788-4427-8820-8b7b696a6033_sessions.parquet",
+                        sep=";")
+
+    se3 = se2.merge(data)
+
+    print(se3.get_days(),
+          se3.get_daily_sessions_sd())
