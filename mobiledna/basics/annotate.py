@@ -13,11 +13,13 @@ ANNOTATION FUNCTIONS
 -- mailto:Wouter.Durnez@UGent.be
 """
 
+import datetime as dt
 import random as rnd
 from collections import Counter
 from os import listdir
 from os.path import join, pardir
 
+import holidays
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -27,6 +29,10 @@ from tqdm import tqdm
 from mobiledna.basics import help as hlp
 from mobiledna.basics.help import log
 
+
+##################
+# App categories #
+##################
 
 def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, list):
     """
@@ -54,7 +60,6 @@ def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, li
     if hlp.LOG_LEVEL == 1:
         t_app_names.set_description('Scraping')
     for app_name in t_app_names:
-
 
         # Check with local cache, which must be a dict
         if isinstance(cache, dict):
@@ -158,7 +163,7 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFram
 
     # Load app meta __data__
     try:
-        meta = np.load(join(pardir, pardir, 'cache', 'app_meta.npy'), allow_pickle=True).item()
+        meta = np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item()
     except Exception as e:
         log('No app meta __data__ found. Scraping Play store.', lvl=1)
         scrape = True
@@ -187,13 +192,73 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFram
     return df
 
 
-if __name__ == '__main__':
+#####################################
+# Weekends, holidays, working hours #
+#####################################
 
+# Holidays --> complete with non-standard days
+be_holidays = holidays.BE()
+
+# Schedule
+morning = (dt.time(8, 30), dt.time(12))
+afternoon = (dt.time(13, 30), dt.time(16))
+
+schedule = {
+    0: [morning, afternoon],
+    1: [morning, afternoon],
+    2: [morning],
+    3: [morning, afternoon],
+    4: [morning, afternoon]
+}
+
+
+def annotate_date(date: dt.datetime) -> str:
+    # Get weekday, hour, minute and second
+    dt = date.date()
+    tm = date.time()
+    wd = date.weekday()
+
+    # Weekend?
+    if wd >= 5:
+        return "weekend"
+
+    # Holiday?
+    if dt in be_holidays:
+        return "holiday"
+
+    # Else: regular weekday
+    return "week"
+
+
+def add_date_annotation(df: pd.DataFrame, date_cols: list) -> pd.DataFrame:
+    """
+    Annotate dates in dataframe (holiday, week or weekend)
+    :param df: data frame
+    :param date_cols: datetime columns to process
+    :return: annotated data frame
+    """
+
+    # Loop over date columns
+    for date_col in date_cols:
+        # Make sure they're in the correct format
+        df[date_col] = pd.to_datetime(df[date_col])
+
+        # Get new name (subtract date, add day of the week)
+        new_col = date_col[:-4] + 'DOTW'
+
+        # Process each row
+        tqdm.pandas(desc=f"Adding dotw <{date_col}>")
+        df[new_col] = df.progress_apply(lambda row: annotate_date(row[date_col]), axis=1)
+
+    return df
+
+
+if __name__ == '__main__':
     # Let's go
     hlp.hi()
     hlp.set_dir(join(pardir, pardir, 'cache'))
     hlp.set_param(log_level=1,
-                  data_dir=join(pardir, pardir, '__data__', 'glance', 'processed_appevents'),
+                  data_dir=join(pardir, pardir, 'data', 'glance', 'processed_appevents'),
                   cache_dir=join(pardir, pardir, 'cache'))
 
     # Load the __data__ and gather apps
@@ -201,48 +266,49 @@ if __name__ == '__main__':
     appevents_files = listdir(hlp.DATA_DIR)
     apps = {}
 
-    for appevents_file in tqdm(appevents_files[0:3]):
-        # Load __data__
-        data = hlp.load(path=join(hlp.DATA_DIR, appevents_file), index='appevents')
+    # Load __data__
+    data = hlp.load(path=join(hlp.DATA_DIR, appevents_files[0]), index='appevents')
 
-        # Add apps to the set (no duplicates)
-        app_counts = Counter(list(data.application))
-        apps = {**apps, **app_counts}
+    # Add apps to the set (no duplicates)
+    app_counts = Counter(list(data.application))
+    apps = {**apps, **app_counts}
 
-    # Sort apps by number of times they occurred in __data__
-    apps = {k: v for k, v in sorted(apps.items(), key=lambda item: item[1], reverse=True)}
+    data = add_date_annotation(data, ['startDate', 'endDate'])
 
-    data2 = add_category(df=data, scrape=True, overwrite=False)
+# Sort apps by number of times they occurred in __data__
+'''apps = {k: v for k, v in sorted(apps.items(), key=lambda item: item[1], reverse=True)}
 
-    # Go through bing
-    '''bing_url_prefix = 'https://www.bing.com/search?q=site%3Ahttps%3A%2F%2Fapkpure.com+'
+data2 = add_category(df=data, scrape=True, overwrite=False)'''
 
-    for app_name in unknowns_play:
+# Go through bing
+'''bing_url_prefix = 'https://www.bing.com/search?q=site%3Ahttps%3A%2F%2Fapkpure.com+'
 
-        bing_url = bing_url_prefix + app_name
+for app_name in unknowns_play:
 
-        # Get HTML from URL
-        response = get(bing_url)
+    bing_url = bing_url_prefix + app_name
 
-        # Create BeautifulSoup object
-        soup = BeautifulSoup(response.text, 'html.parser')
+    # Get HTML from URL
+    response = get(bing_url)
 
-        a_s = soup.find_all('a', href=True)
+    # Create BeautifulSoup object
+    soup = BeautifulSoup(response.text, 'html.parser')
 
-        links = set()
+    a_s = soup.find_all('a', href=True)
 
-        for a in a_s:
-            if (a['href'].startswith('https://apkpure.com') and
-                a['href'].__contains__(app_name) and
-                not (a['href'].__contains__('/fr/') or
-                     a['href'].__contains__('/id/') or
-                     a['href'].__contains__('/in/') or
-                     a['href'].__contains__('/es/') or
-                     a['href'].__contains__('/versions') or
-                     a['href'].__contains__('/download') or
-                     a['href'].__contains__('/nl/'))):
-                links.add(a['href'])
+    links = set()
 
-        if links and len(links) > 1:
-            print(app_name, len(links), links)
-        '''
+    for a in a_s:
+        if (a['href'].startswith('https://apkpure.com') and
+            a['href'].__contains__(app_name) and
+            not (a['href'].__contains__('/fr/') or
+                 a['href'].__contains__('/id/') or
+                 a['href'].__contains__('/in/') or
+                 a['href'].__contains__('/es/') or
+                 a['href'].__contains__('/versions') or
+                 a['href'].__contains__('/download') or
+                 a['href'].__contains__('/nl/'))):
+            links.add(a['href'])
+
+    if links and len(links) > 1:
+        print(app_name, len(links), links)
+    '''

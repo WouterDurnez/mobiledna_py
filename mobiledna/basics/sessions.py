@@ -190,11 +190,11 @@ class Sessions:
 
 if __name__ == "__main__":
     ###########
-        # EXAMPLE #
-        ###########
+    # EXAMPLE #
+    ###########
 
-        hlp.hi()
-        hlp.set_param(log_level=1)
+    hlp.hi()
+    hlp.set_param(log_level=1)
 
     data = hlp.load(path='../../data/glance/sessions/0a9e1d70-fd9e-47a7-a765-d608587f63d7_sessions.parquet',
                     index='sessions')

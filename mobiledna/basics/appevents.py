@@ -19,8 +19,8 @@ import pandas as pd
 from tqdm import tqdm
 
 import mobiledna.basics.help as hlp
-from mobiledna.basics.annotate import add_category
-from mobiledna.basics.help import log
+from mobiledna.basics.annotate import add_category, add_date_annotation
+from mobiledna.basics.help import log, remove_first_and_last, longest_uninterrupted
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -29,7 +29,8 @@ pd.set_option('display.width', 1000)
 
 class Appevents:
 
-    def __init__(self, data: pd.DataFrame = None, add_categories=False, get_session_sequences=False):
+    def __init__(self, data: pd.DataFrame = None, add_categories=False, add_date_annotation=False,
+                 get_session_sequences=False):
 
         # Set dtypes #
         ##############
@@ -68,9 +69,13 @@ class Appevents:
         # Add duration columns
         self.__data__ = hlp.add_duration(df=self.__data__)
 
-        # Add categories
+        # Add categories on request
         if add_categories:
             self.add_category()
+
+        # Add date annotations on request
+        if add_date_annotation:
+            self.add_date_annotation()
 
         # Initialize attributes
         self.__session_sequences__ = self.get_session_sequences() if get_session_sequences else None
@@ -120,7 +125,7 @@ class Appevents:
 
         return cls(data=data)
 
-    def filter(self, category=None, application=None, from_push=None):
+    def __filter__(self, category=None, application=None, from_push=None, day_types=None) -> pd.DataFrame:
 
         # If we want category-specific info, make sure we have category column
         if category:
@@ -145,7 +150,28 @@ class Appevents:
         if from_push:
             data = data.loc[data.notification == from_push]
 
+        if day_types:
+            day_types = [day_types] if not isinstance(day_types, list) else day_types
+
+            if 'startDOTW' not in self.__data__.columns:
+                self.add_date_annotation()
+
+            # ... and filter
+            data = data.loc[self.__data__.startDOTW.isin(day_types)]
+
         return data
+
+    def strip(self) -> pd.DataFrame:
+
+        # Get longest uninterrupted sequence
+        self.__data__ = self.__data__.groupby('id').apply(lambda df: longest_uninterrupted(df=df)).reset_index(
+            drop=True)
+
+        # Cut off head and tail
+        self.__data__ = self.__data__.groupby('id').apply(lambda df: remove_first_and_last(df=df)).reset_index(
+            drop=True)
+
+        return self
 
     def merge(self, *appevents: pd.DataFrame):
         """
@@ -162,6 +188,14 @@ class Appevents:
     def add_category(self, scrape=False, overwrite=False):
 
         self.__data__ = add_category(df=self.__data__, scrape=scrape, overwrite=overwrite)
+
+        return self
+
+    def add_date_annotation(self, date_cols=['startDate']):
+
+        self.__data__ = add_date_annotation(df=self.__data__, date_cols=date_cols)
+
+        return self
 
     # Getters #
     ###########
@@ -184,6 +218,20 @@ class Appevents:
         """
 
         return Counter(list(self.__data__.application))
+
+    def get_dates(self, relative=False) -> list:
+        """
+        Returns a list of unique dates
+        """
+        unique_dates = self.__data__.groupby('id').startDate.unique()
+
+        if relative:
+            unique_dates = unique_dates - self.__data__.groupby('id').startDate.min()
+
+            for idx in range(len(unique_dates)):
+                unique_dates.iloc[idx] = [delta.days for delta in unique_dates.iloc[idx]]
+
+        return unique_dates
 
     def get_days(self) -> pd.Series:
         """
@@ -222,7 +270,7 @@ class Appevents:
     # Compound getters #
     ####################
 
-    def get_daily_events(self, category=None, application=None, from_push=None) -> pd.Series:
+    def get_daily_events(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
         """
         Returns number of appevents per day
         """
@@ -230,15 +278,16 @@ class Appevents:
         # Field name
         name = ('daily_events' +
                 (f'_{category}' if category else '') +
-                (f'_{application}' if application else '')).lower()
+                (f'_{application}' if application else '') +
+                (f'_{day_types}' if day_types else '')).lower()
 
         # Filter data on request
-        data = self.filter(category=category, application=application, from_push=from_push)
+        data = self.__filter__(category=category, application=application, from_push=from_push, day_types=day_types)
 
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
             groupby('id').application.mean().rename(name)
 
-    def get_daily_durations(self, category=None, application=None, from_push=None) -> pd.Series:
+    def get_daily_duration(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
         """
         Returns duration per day
         """
@@ -246,15 +295,16 @@ class Appevents:
         # Field name
         name = ('daily_durations' +
                 (f'_{category}' if category else '') +
-                (f'_{application}' if application else '')).lower()
+                (f'_{application}' if application else '') +
+                (f'_{day_types}' if day_types else '')).lower()
 
         # Filter data on request
-        data = self.filter(category=category, application=application, from_push=from_push)
+        data = self.__filter__(category=category, application=application, from_push=from_push, day_types=day_types)
 
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.mean().rename(name)
 
-    def get_daily_events_sd(self, category=None, application=None, from_push=None) -> pd.Series:
+    def get_daily_events_sd(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
         """
         Returns standard deviation on number of events per day
         """
@@ -262,15 +312,16 @@ class Appevents:
         # Field name
         name = ('daily_events_sd' +
                 (f'_{category}' if category else '') +
-                (f'_{application}' if application else '')).lower()
+                (f'_{application}' if application else '') +
+                (f'_{day_types}' if day_types else '')).lower()
 
         # Filter __data__ on request
-        data = self.filter(category=category, application=application, from_push=from_push)
+        data = self.__filter__(category=category, application=application, from_push=from_push, day_types=day_types)
 
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
             groupby('id').application.std().rename(name)
 
-    def get_daily_durations_sd(self, category=None, application=None, from_push=None) -> pd.Series:
+    def get_daily_durations_sd(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
         """
         Returns duration per day
         """
@@ -278,10 +329,11 @@ class Appevents:
         # Field name
         name = ('daily_durations_sd' +
                 (f'_{category}' if category else '') +
-                (f'_{application}' if application else '')).lower()
+                (f'_{application}' if application else '') +
+                (f'_{day_types}' if day_types else '')).lower()
 
         # Filter __data__ on request
-        data = self.filter(category=category, application=application, from_push=from_push)
+        data = self.__filter__(category=category, application=application, from_push=from_push, day_types=day_types)
 
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.std().rename(name)
@@ -312,10 +364,12 @@ if __name__ == "__main__":
     ###########
 
     hlp.hi()
-    hlp.set_param(log_level=1)
+    hlp.set_param(log_level=3)
 
     # Read sample data
-    data = pd.read_parquet(path='../../data/glance/appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet')
+    data = hlp.add_dates(
+        pd.read_parquet(path='../../data/glance/appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet'),
+        'appevents')
 
     # Data path
     data_path = '../../data/glance/appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet'
@@ -323,7 +377,7 @@ if __name__ == "__main__":
     # More sample data
     data2 = pd.read_parquet(path='../../data/glance/appevents/0a9edba1-14e3-466a-8d0c-f8a8170cefc8_appevents.parquet')
     data3 = pd.read_parquet(path='../../data/glance/appevents/0a48d1e8-ead2-404a-a5a2-6b05371200b1_appevents.parquet')
-    data4 = pd.concat([data, data2, data3])
+    data4 = hlp.add_dates(pd.concat([data, data2, data3], sort=True), 'appevents')
 
     # Initialize object by loading from path
     print(1)
@@ -331,7 +385,7 @@ if __name__ == "__main__":
 
     # Initialize object and add categories
     print(2)
-    ae2 = Appevents(data2, add_categories=True)
+    ae2 = Appevents(data2, add_categories=False)
 
     # Initialize object by adding more data (in this case data2 and data3)
     print(3)

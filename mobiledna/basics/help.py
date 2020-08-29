@@ -233,6 +233,76 @@ def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore_error=Fal
     return new_time_range
 
 
+def remove_first_and_last(df: pd.DataFrame, col='startDate') -> pd.DataFrame:
+    """
+    Chop the first and last day off of a data frame, on the basis of startDates.
+    WARNING: does this over the whole data frame, ignoring ids. Use in combination with groupby.
+
+    :param df: input data frame
+    :param col: column on which to perform operation
+    :return: filtered data frame
+    """
+
+    # Get first and last date
+    first, last = list(df[col].agg(['min', 'max']))
+
+    # Restrict original df
+    df = df.loc[(df[col] != first) & (df[col] != last)]
+
+    return df
+
+
+def longest_uninterrupted(df: pd.DataFrame, column='startDate') -> pd.DataFrame:
+    """
+    Filter data frame to retain longest uninterrupted logging period (based on designated column)
+    :param df: data frame
+    :param column: date column
+    :return: filtered data frame
+    """
+
+    if len(df.id.unique()) > 1:
+        raise Exception("Cannot apply function to data frame from multiple ids. Use groupby.")
+
+    # Get unique dates from data frame
+    dates = sorted(df[column].unique())
+
+    # Silence some warnings
+    previous = None
+    run, longest = [], []
+
+    # Loop over indexed dates
+    for idx, date in enumerate(dates):
+
+        # If we're at the first, set up our run (which is now the longest run)
+        if idx == 0:
+
+            run = [date]
+            longest = [date]
+
+        # If current date does not follow previous date, or if we reached end of the line
+        elif (date - previous).days != 1:
+
+            # Start new run
+            run = [date]
+
+        # In any other case, keep updating run
+        else:
+            run.append(date)
+
+        if len(run) > len(longest):
+            longest = run
+
+        # Remember last date
+        previous = date
+
+    # Print some output
+    log(f"Longest uninterrupted log period for {df.id[0]}: {len(longest)} days.")
+
+    # Filter data frame
+    df = df.loc[df[column].isin(longest)]
+
+    return df
+
 ############################
 # Initialization functions #
 ############################

@@ -554,7 +554,7 @@ if __name__ in ['__main__', 'builtins']:
 
     # ids = ids_from_server(index='appevents', time_range=time_range)
     ids = ids_from_file(hlp.DATA_DIR, file_name='glance_ids')
-    split_pipeline(ids=ids, subfolder=True,
+    split_pipeline(ids=ids[65:], subfolder=True,
                    dir=os.path.join(hlp.DATA_DIR, 'glance'),
                    time_range=time_range,
                    indices=(['notifications']),
