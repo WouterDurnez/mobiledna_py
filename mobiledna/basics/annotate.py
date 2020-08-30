@@ -56,7 +56,7 @@ def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, li
     cached_apps = 0
 
     # Loop over app names
-    t_app_names = app_names if hlp.LOG_LEVEL > 1 else tqdm(app_names)
+    t_app_names = app_names if hlp.LOG_LEVEL > 1 else tqdm(app_names, position=0, leave=True)
     if hlp.LOG_LEVEL == 1:
         t_app_names.set_description('Scraping')
     for app_name in t_app_names:
@@ -135,9 +135,9 @@ def scrape_play_store(app_names: list, cache=None, overwrite=False) -> (dict, li
         # print()
         # time.sleep(zzz)
 
-    log(f"Obtained info for {len(known_apps)} apps.", lvl=1)
-    log(f"Failed to get info on {len(unknown_apps)} apps.", lvl=1)
-    log(f"{cached_apps} apps were already cached.", lvl=1)
+    log(f"Obtained info for {len(known_apps)} apps.", lvl=2)
+    log(f"Failed to get info on {len(unknown_apps)} apps.", lvl=2)
+    log(f"{cached_apps} apps were already cached.", lvl=2)
 
     # Merge new info with cache
     if isinstance(cache, dict):
@@ -181,12 +181,12 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFram
     # Add category field to row
     def adding_category_row(row: pd.Series):
 
-        if row.application in meta.keys():
+        if row.application in meta.keys() and meta[row.application]['genre1']:
             return meta[row.application]['genre1'].lower()
         else:
             return 'unknown'
 
-    tqdm.pandas(desc="Adding category")
+    tqdm.pandas(desc="Adding category", position=0, leave=True)
     df['category'] = df.progress_apply(adding_category_row, axis=1)
 
     return df
@@ -238,6 +238,9 @@ def add_date_annotation(df: pd.DataFrame, date_cols: list) -> pd.DataFrame:
     :return: annotated data frame
     """
 
+    # Type check
+    date_cols = date_cols if isinstance(date_cols, list) else [date_cols]
+
     # Loop over date columns
     for date_col in date_cols:
         # Make sure they're in the correct format
@@ -247,7 +250,7 @@ def add_date_annotation(df: pd.DataFrame, date_cols: list) -> pd.DataFrame:
         new_col = date_col[:-4] + 'DOTW'
 
         # Process each row
-        tqdm.pandas(desc=f"Adding dotw <{date_col}>")
+        tqdm.pandas(desc=f"Adding dotw <{date_col}>", position=0, leave=True)
         df[new_col] = df.progress_apply(lambda row: annotate_date(row[date_col]), axis=1)
 
     return df

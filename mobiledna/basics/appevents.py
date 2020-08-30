@@ -13,6 +13,7 @@ APPEVENTS CLASS
 -- mailto:Wouter.Durnez@UGent.be
 """
 
+import pickle
 from collections import Counter
 
 import pandas as pd
@@ -30,7 +31,7 @@ pd.set_option('display.width', 1000)
 class Appevents:
 
     def __init__(self, data: pd.DataFrame = None, add_categories=False, add_date_annotation=False,
-                 get_session_sequences=False):
+                 get_session_sequences=False, strip=False):
 
         # Set dtypes #
         ##############
@@ -63,8 +64,13 @@ class Appevents:
         # Set data attribute
         self.__data__ = data
 
+        # Keep track of stripping
+        self.__stripped__ = False
+
         # Add date columns
         self.__data__ = hlp.add_dates(df=self.__data__, index='appevents')
+        data.startDate = data.startDate.astype('datetime64[D]')
+        data.endDate = data.endDate.astype('datetime64[D]')
 
         # Add duration columns
         self.__data__ = hlp.add_duration(df=self.__data__)
@@ -76,6 +82,10 @@ class Appevents:
         # Add date annotations on request
         if add_date_annotation:
             self.add_date_annotation()
+
+        # Strip on request
+        if strip:
+            self.strip()
 
         # Initialize attributes
         self.__session_sequences__ = self.get_session_sequences() if get_session_sequences else None
@@ -92,38 +102,34 @@ class Appevents:
         :return: Appevents object
         """
 
-        # Load data frame, depending on file type
-        if file_type == 'infer':
-
-            # Get extension
-            file_type = path.split('.')[-1]
-
-            # Only allow the following extensions
-            if file_type not in ['csv', 'pickle', 'pkl', 'parquet']:
-                raise Exception("ERROR: Could not infer file type!")
-
-            log("Recognized file type as <{type}>.".format(type=file_type), lvl=3)
-
-        # CSV
-        if file_type == 'csv':
-            data = pd.read_csv(filepath_or_buffer=path,
-                               # usecols=,
-                               sep=sep, decimal=decimal,
-                               error_bad_lines=False)
-
-        # Pickle
-        elif file_type == 'pickle' or file_type == 'pkl':
-            data = pd.read_pickle(path=path)
-
-        # Parquet
-        elif file_type == 'parquet':
-            data = pd.read_parquet(path=path, engine='auto')
-
-        # Unknown
-        else:
-            raise Exception("ERROR: You want me to read what now? Invalid file type! ")
+        data = hlp.load(path=path, index='appevents', file_type=file_type, sep=sep, dec=decimal)
 
         return cls(data=data)
+
+    @classmethod
+    def from_pickle(cls, path: str):
+        """
+        Construct an Appevents object from pickle
+        :param path: path to file
+        :return: Appevents object
+        """
+
+        with open(file=path, mode='rb') as file:
+            object = pickle.load(file)
+        file.close()
+
+        return object
+
+    def to_pickle(self, path: str):
+        """
+        Store an Appevents object to pickle
+        :param path: path to file
+        :return: None
+        """
+
+        with open(file=path, mode='wb') as file:
+            pickle.dump(self, file, pickle.HIGHEST_PROTOCOL)
+        file.close()
 
     def __filter__(self, category=None, application=None, from_push=None, day_types=None) -> pd.DataFrame:
 
@@ -161,7 +167,11 @@ class Appevents:
 
         return data
 
-    def strip(self) -> pd.DataFrame:
+    def strip(self, number_of_days=None):
+
+        if self.__stripped__:
+            log('Already stripped this Appevents object!', lvl=1)
+            return self
 
         # Get longest uninterrupted sequence
         self.__data__ = self.__data__.groupby('id').apply(lambda df: longest_uninterrupted(df=df)).reset_index(
@@ -171,7 +181,33 @@ class Appevents:
         self.__data__ = self.__data__.groupby('id').apply(lambda df: remove_first_and_last(df=df)).reset_index(
             drop=True)
 
+        # If a number of days is set
+        if number_of_days:
+            self.select_n_first_days(n=number_of_days, inplace=True)
+
+        # Remember that we did this
+        self.__stripped__ = True
+
         return self
+
+    def select_n_first_days(self, n: int, inplace=False):
+
+        def select_helper(data: pd.DataFrame, n: int):
+
+            start = data.startDate.min()
+            end = start + pd.Timedelta(n - 1, 'D')
+
+            return data.loc[(data.startDate >= start) & (data.startDate <= end)]
+
+        selection = self.__data__.groupby('id'). \
+            apply(lambda data: select_helper(data=data, n=n)).reset_index(drop=True)
+
+        if inplace:
+            self.__data__ = selection
+            return self
+
+        else:
+            return selection
 
     def merge(self, *appevents: pd.DataFrame):
         """
@@ -191,7 +227,10 @@ class Appevents:
 
         return self
 
-    def add_date_annotation(self, date_cols=['startDate']):
+    def add_date_annotation(self, date_cols=None):
+
+        if not date_cols:
+            date_cols = 'startDate'
 
         self.__data__ = add_date_annotation(df=self.__data__, date_cols=date_cols)
 
@@ -385,8 +424,12 @@ if __name__ == "__main__":
 
     # Initialize object and add categories
     print(2)
-    ae2 = Appevents(data2, add_categories=False)
+    ae2 = Appevents(data2, add_categories=False, strip=True)
 
     # Initialize object by adding more data (in this case data2 and data3)
     print(3)
     ae3 = ae.merge(data2, data3)
+
+    ae2.to_pickle('../../data/glance/meta/ae2.ae')
+
+    ae5 = Appevents.from_pickle('../../data/glance/meta/ae2.ae')

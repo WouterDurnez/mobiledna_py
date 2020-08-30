@@ -273,6 +273,8 @@ def longest_uninterrupted(df: pd.DataFrame, column='startDate') -> pd.DataFrame:
     # Loop over indexed dates
     for idx, date in enumerate(dates):
 
+        # Calculate difference
+
         # If we're at the first, set up our run (which is now the longest run)
         if idx == 0:
 
@@ -280,7 +282,7 @@ def longest_uninterrupted(df: pd.DataFrame, column='startDate') -> pd.DataFrame:
             longest = [date]
 
         # If current date does not follow previous date, or if we reached end of the line
-        elif (date - previous).days != 1:
+        elif ((date - previous).astype('timedelta64[D]') / np.timedelta64(1, 'D')) != 1:
 
             # Start new run
             run = [date]
@@ -460,7 +462,7 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
     return df
 
 
-def add_duration(df: pd.DataFrame) -> pd.DataFrame:
+def add_duration(df: pd.DataFrame, clear_negatives=True) -> pd.DataFrame:
     """
     Calculate app event duration and add to (new) data frame.
 
@@ -481,7 +483,15 @@ def add_duration(df: pd.DataFrame) -> pd.DataFrame:
 
     # Check if there are any negative durations.
     if not df[df["duration"] < 0].empty:
-        log("WARNING: encountered negative duration!", lvl=1)
+
+        # Clear negatives if requested
+        if clear_negatives:
+
+            log("WARNING: encountered negative duration! Removing from data frame...", lvl=1)
+            df = df.loc[df["duration"] >= 0]
+
+        else:
+            log("WARNING: encountered negative duration!", lvl=1)
 
     return df
 
@@ -496,8 +506,8 @@ def add_dates(df: pd.DataFrame, index: str) -> pd.DataFrame:
     """
     if index == 'appevents' or index == 'sessions':
 
-        df['startDate'] = df.startTime.dt.date
-        df['endDate'] = df.endTime.dt.date
+        df['startDate'] = pd.to_datetime(df.startTime.dt.date)
+        df['endDate'] = pd.to_datetime(df.endTime.dt.date)
 
     elif index == 'notifications':
 
