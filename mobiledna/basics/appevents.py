@@ -23,10 +23,6 @@ import mobiledna.basics.help as hlp
 from mobiledna.basics.annotate import add_category, add_date_annotation
 from mobiledna.basics.help import log, remove_first_and_last, longest_uninterrupted
 
-pd.set_option('display.max_rows', 500)
-pd.set_option('display.max_columns', 500)
-pd.set_option('display.width', 1000)
-
 
 class Appevents:
 
@@ -91,9 +87,9 @@ class Appevents:
         self.__session_sequences__ = self.get_session_sequences() if get_session_sequences else None
 
     @classmethod
-    def load(cls, path: str, file_type='infer', sep=',', decimal='.'):
+    def load_data(cls, path: str, file_type='infer', sep=',', decimal='.'):
         """
-        Construct Appevents object from path
+        Construct Appevents object from path to data
 
         :param path: path to the file
         :param file_type: file extension (csv, parquet, or pickle)
@@ -120,6 +116,19 @@ class Appevents:
 
         return object
 
+    def save_data(self, dir: str, name: str, csv=False, pickle=False, parquet=True):
+        """
+        Save data from Appevents object to data frame
+        :param dir: directory to save
+        :param name: file name
+        :param csv: csv format
+        :param pickle: pickle format
+        :param parquet: parquet format
+        :return: None
+        """
+
+        hlp.save(df=self.__data__, dir=dir, name=name, csv_file=csv, pickle=pickle, parquet=parquet)
+
     def to_pickle(self, path: str):
         """
         Store an Appevents object to pickle
@@ -131,7 +140,7 @@ class Appevents:
             pickle.dump(self, file, pickle.HIGHEST_PROTOCOL)
         file.close()
 
-    def __filter__(self, category=None, application=None, from_push=None, day_types=None) -> pd.DataFrame:
+    def filter(self, category=None, application=None, from_push=None, day_types=None, inplace=False):
 
         # If we want category-specific info, make sure we have category column
         if category:
@@ -165,7 +174,11 @@ class Appevents:
             # ... and filter
             data = data.loc[self.__data__.startDOTW.isin(day_types)]
 
-        return data
+        if inplace:
+            self.__data__ = data
+            return self
+        else:
+            return data
 
     def strip(self, number_of_days=None):
 
@@ -191,6 +204,13 @@ class Appevents:
         return self
 
     def select_n_first_days(self, n: int, inplace=False):
+        """
+        Select the first n days in the data frame, either inplace or on a copy that is returned.
+
+        :param n: number of days
+        :param inplace: modify object or return copy of data
+        :return: modified Appevents object or modified copy of data frame
+        """
 
         def select_helper(data: pd.DataFrame, n: int):
 
@@ -321,7 +341,7 @@ class Appevents:
                 (f'_{day_types}' if day_types else '')).lower()
 
         # Filter data on request
-        data = self.__filter__(category=category, application=application, from_push=from_push, day_types=day_types)
+        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types)
 
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
             groupby('id').application.mean().rename(name)
@@ -338,7 +358,7 @@ class Appevents:
                 (f'_{day_types}' if day_types else '')).lower()
 
         # Filter data on request
-        data = self.__filter__(category=category, application=application, from_push=from_push, day_types=day_types)
+        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types)
 
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.mean().rename(name)
@@ -355,7 +375,7 @@ class Appevents:
                 (f'_{day_types}' if day_types else '')).lower()
 
         # Filter __data__ on request
-        data = self.__filter__(category=category, application=application, from_push=from_push, day_types=day_types)
+        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types)
 
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
             groupby('id').application.std().rename(name)
@@ -372,7 +392,7 @@ class Appevents:
                 (f'_{day_types}' if day_types else '')).lower()
 
         # Filter __data__ on request
-        data = self.__filter__(category=category, application=application, from_push=from_push, day_types=day_types)
+        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types)
 
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.std().rename(name)
@@ -407,7 +427,8 @@ if __name__ == "__main__":
 
     # Read sample data
     data = hlp.add_dates(
-        pd.read_parquet(path='../../data/glance/appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet'),
+        pd.read_parquet(
+            path='../../data/glance/processed_appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet'),
         'appevents')
 
     # Data path
@@ -420,7 +441,7 @@ if __name__ == "__main__":
 
     # Initialize object by loading from path
     print(1)
-    ae = Appevents.load(path=data_path)
+    ae = Appevents.load_data(path=data_path)
 
     # Initialize object and add categories
     print(2)
@@ -431,5 +452,7 @@ if __name__ == "__main__":
     ae3 = ae.merge(data2, data3)
 
     ae2.to_pickle('../../data/glance/meta/ae2.ae')
+
+    ae.save_data(dir='../../data/glance/processed_appevents', name='test')
 
     ae5 = Appevents.from_pickle('../../data/glance/meta/ae2.ae')

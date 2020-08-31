@@ -305,6 +305,7 @@ def longest_uninterrupted(df: pd.DataFrame, column='startDate') -> pd.DataFrame:
 
     return df
 
+
 ############################
 # Initialization functions #
 ############################
@@ -330,6 +331,9 @@ def hi():
     # Set this warning if you intend to keep working on the same data frame,
     # and you're not too worried about messing up the raw data.
     pd.set_option('chained_assignment', None)
+    pd.set_option('display.max_rows', 500)
+    pd.set_option('display.max_columns', 500)
+    pd.set_option('display.width', 1000)
 
     # Set a random seed
     rnd.seed(616)
@@ -351,7 +355,8 @@ def check_index(df: pd.DataFrame, index: str, ignore_error=False) -> bool:
     # Check index argument
     if index not in INDICES:
         raise Exception(
-            "ERROR: When checking index type, please enter valid index ('appevents','notifications','logs', or 'sessions'.")
+            "ERROR: When checking index type, please enter valid index"
+            " ('appevents','notifications','logs', or 'sessions'.")
 
     unique_columns = {
         'appevents': 'session',
@@ -553,6 +558,10 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
     :return: /
     """
 
+    # Check if directory exists
+    if not os.path.exists(dir):
+        set_dir(dir)
+
     path = os.path.join(dir, name)
 
     # Store to CSV
@@ -584,7 +593,7 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
     if parquet:
 
         try:
-            df.to_parquet(fname=path + ".parquet", engine='auto', compression='snappy')
+            df.to_parquet(path=path + ".parquet", engine='auto', compression='snappy')
             log("Saved data frame to {}".format(path + ".parquet"))
 
         except Exception as e:
