@@ -13,10 +13,11 @@ APPEVENTS CLASS
 -- mailto:Wouter.Durnez@UGent.be
 """
 
+import pickle
+
 import pandas as pd
 
 import mobiledna.basics.help as hlp
-from mobiledna.basics.help import log
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -51,55 +52,64 @@ class Sessions:
 
 
     @classmethod
-    def load(cls, path: str, file_type='infer', sep=',', decimal='.'):
+    def load_data(cls, path: str, file_type='infer', sep=',', decimal='.'):
         """
-        Construct Sessions object from path.
+        Construct Appevents object from path to data
 
         :param path: path to the file
         :param file_type: file extension (csv, parquet, or pickle)
         :param sep: separator for csv files
         :param decimal: decimal for csv files
-        :return: Sessions object
+        :return: Appevents object
         """
 
-        # Load data frame, depending on file type
-        if file_type == 'infer':
-
-            # Get extension
-            file_type = path.split('.')[-1]
-
-            # Only allow the following extensions
-            if file_type not in ['csv', 'pickle', 'pkl', 'parquet']:
-                raise Exception("ERROR: Could not infer file type!")
-
-            log("Recognized file type as <{type}>.".format(type=file_type), lvl=3)
-
-        # CSV
-        if file_type == 'csv':
-            data = pd.read_csv(filepath_or_buffer=path,
-                               # usecols=,
-                               sep=sep, decimal=decimal,
-                               error_bad_lines=False)
-
-        # Pickle
-        elif file_type == 'pickle' or file_type == 'pkl':
-            data = pd.read_pickle(path=path)
-
-        # Parquet
-        elif file_type == 'parquet':
-            data = pd.read_parquet(path=path, engine='auto')
-
-        # Unknown
-        else:
-            raise Exception("ERROR: You want me to read what now? Invalid file type! ")
+        data = hlp.load(path=path, index='session', file_type=file_type, sep=sep, dec=decimal)
 
         return cls(data=data)
 
+    @classmethod
+    def from_pickle(cls, path: str):
+        """
+        Construct an Sessions object from pickle
+        :param path: path to file
+        :return: Sessions object
+        """
+
+        with open(file=path, mode='rb') as file:
+            object = pickle.load(file)
+        file.close()
+
+        return object
+
+    def save_data(self, dir: str, name: str, csv=False, pickle=False, parquet=True):
+        """
+        Save data from Sessions object to data frame
+        :param dir: directory to save
+        :param name: file name
+        :param csv: csv format
+        :param pickle: pickle format
+        :param parquet: parquet format
+        :return: None
+        """
+
+        hlp.save(df=self.__data__, dir=dir, name=name, csv_file=csv, pickle=pickle, parquet=parquet)
+
+    def to_pickle(self, path: str):
+        """
+        Store an Sessions object to pickle
+        :param path: path to file
+        :return: None
+        """
+
+        with open(file=path, mode='wb') as file:
+            pickle.dump(self, file, pickle.HIGHEST_PROTOCOL)
+        file.close()
+
     def merge(self, *sessions: pd.DataFrame):
         """
-        Merge new data into existing Appevents object.
+        Merge new data into existing Session object.
 
-        :param sessions: data frame with appevents
+        :param sessions: data frame with sessions
         :return: new Sessions object
         """
 

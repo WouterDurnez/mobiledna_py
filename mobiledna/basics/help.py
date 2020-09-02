@@ -423,7 +423,6 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
         for column in to_category:
             df[column] = df[column].astype('category')
 
-
     elif index == 'notifications':
 
         df.time = df.time.astype('datetime64[ns]')
@@ -444,14 +443,18 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
         df.rename(columns={'timestamp': 'startTime'}, inplace=True)
 
         # Add end timestamp
-        df['endTime'] = df.groupby('id')['startTime'].shift(-1)
-        df['session off'] = df.groupby('id')['session on'].shift(-1)
+        # df['endTime'] = df.groupby('id')['startTime'].shift(-1)
+        # df['session off'] = df.groupby('id')['session on'].shift(-1)
+        # print(df.head(20))
 
         # Add ID which links with appevents index
         df['sessionID'] = pd.to_numeric(df['startTime'].astype(int) - 3600, downcast='unsigned')
 
         # Filter out bogus rows
-        df = df.loc[(df['session on'] == True) & (df['session off'] == False)]
+        number_of_old_sessions = len(df['session on'] == True)
+        # df = df.loc[(df['session on'] == True) & (df['session off'] == False)]
+        log(f"Formatted sessions, account for {len(df)}/{number_of_old_sessions} "
+            f"({100 * np.round(len(df) / number_of_old_sessions, 2)}%)", lvl=3)
 
     elif index == 'logs':
 

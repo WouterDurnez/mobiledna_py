@@ -380,7 +380,7 @@ class Appevents:
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
             groupby('id').application.std().rename(name)
 
-    def get_daily_durations_sd(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
+    def get_daily_duration_sd(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
         """
         Returns duration per day
         """

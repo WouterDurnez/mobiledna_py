@@ -550,15 +550,15 @@ if __name__ in ['__main__', 'builtins']:
     hlp.hi()
     hlp.set_param(log_level=3)
 
-    time_range = ('2019-01-01T00:00:00.000', '2020-05-01T00:00:00.000')
+    time_range = ('2020-05-01T00:00:00.000', '2020-05-10T00:00:00.000')
 
     # ids = ids_from_server(index='appevents', time_range=time_range)
     ids = ids_from_file(hlp.DATA_DIR, file_name='glance_ids')
-    split_pipeline(ids=ids[65:], subfolder=True,
-                   dir=os.path.join(hlp.DATA_DIR, 'glance'),
-                   time_range=time_range,
-                   indices=(['notifications']),
-                   parquet=True,
-                   csv_file=False)
+    data = split_pipeline(ids=ids[:1], subfolder=True,
+                          dir=os.path.join(hlp.DATA_DIR, 'glance'),
+                          time_range=time_range,
+                          indices=(['sessions']),
+                          parquet=False,
+                          csv_file=False)
 
 
