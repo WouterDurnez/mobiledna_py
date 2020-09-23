@@ -7,7 +7,7 @@
  / /  / / /_/ / /_/ / / /  __/ /_/ / /|  / ___ |
 /_/  /_/\____/_.___/_/_/\___/_____/_/ |_/_/  |_|
 
-APPEVENTS CLASS
+SESSIONS CLASS
 
 -- Coded by Kyle Van Gaeveren & Wouter Durnez
 -- mailto:Wouter.Durnez@UGent.be
@@ -54,13 +54,13 @@ class Sessions:
     @classmethod
     def load_data(cls, path: str, file_type='infer', sep=',', decimal='.'):
         """
-        Construct Appevents object from path to data
+        Construct Sessions object from path to data
 
         :param path: path to the file
         :param file_type: file extension (csv, parquet, or pickle)
         :param sep: separator for csv files
         :param decimal: decimal for csv files
-        :return: Appevents object
+        :return: Sessions object
         """
 
         data = hlp.load(path=path, index='session', file_type=file_type, sep=sep, dec=decimal)

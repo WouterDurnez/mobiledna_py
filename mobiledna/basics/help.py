@@ -533,6 +533,10 @@ def add_dates(df: pd.DataFrame, index: str) -> pd.DataFrame:
 
         df['date'] = df.time.dt.date
 
+    elif index == 'connectivity':
+
+        df['date'] = df.timestamp.dt.date
+
     else:
         log('Wrong index: nothing changed!', lvl=1)
 
@@ -632,7 +636,7 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
 
     # Check if index is valid
     if index not in INDICES:
-        raise Exception("Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', or 'logs'.")
+        raise Exception("Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', 'connectivity' or 'logs'.")
 
     # Load data frame, depending on file type
     if file_type == 'infer':
