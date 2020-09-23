@@ -79,6 +79,18 @@ INDEX_FIELDS = {
         'surveyId',
         'logging enabled',
         'date'
+    ],
+    'connectivity': [
+        'latitude',
+        'longitude',
+        'networkOperatorName',
+        'networkType',
+        "signalStrengthAsu",
+        "signalStrengthDbm",
+        "signalStrengthLevel",
+        "timestampMillis",
+        'timestamp',
+        'id',
     ]
 }
 

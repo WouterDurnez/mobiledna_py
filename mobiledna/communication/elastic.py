@@ -35,7 +35,8 @@ time_var = {
     'appevents': 'startTime',
     'notifications': 'time',
     'sessions': 'timestamp',
-    'logs': 'date'
+    'logs': 'date',
+    'connectivity':'timestamp'
 }
 es = None
 
@@ -267,7 +268,7 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
     # Are we looking for the right INDICES?
     if index not in indices:
         raise Exception("Can't fetch __data__ for anything other than appevents,"
-                        " notifications or sessions (or logs, but whatever).")
+                        " notifications, sessions or connectivity (or logs, but whatever).")
 
     count_tot = es.count(index="mobiledna", doc_type=index)
     log("There are {count} entries of the type <{index}>.".
@@ -440,7 +441,7 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
 
 @hlp.time_it
 def pipeline(name: str, ids: list, dir: str,
-             indices=('appevents', 'sessions', 'notifications', 'logs'),
+             indices=('appevents', 'sessions', 'notifications', 'logs', 'connectivity'),
              time_range=('2018-01-01T00:00:00.000', '2020-01-01T00:00:00.000'),
              subfolder=False,
              pickle=False, csv_file=True, parquet=False):
@@ -495,7 +496,7 @@ def pipeline(name: str, ids: list, dir: str,
 
 @hlp.time_it
 def split_pipeline(ids: list, dir: str,
-                   indices=('appevents', 'notifications', 'sessions', 'logs'),
+                   indices=('appevents', 'notifications', 'sessions', 'logs', 'connectivity'),
                    time_range=('2019-10-01T00:00:00.000', '2020-02-01T00:00:00.000'),
                    subfolder=True,
                    pickle=False, csv_file=False, parquet=True) -> list:
@@ -550,15 +551,29 @@ if __name__ in ['__main__', 'builtins']:
     hlp.hi()
     hlp.set_param(log_level=3)
 
-    time_range = ('2020-05-01T00:00:00.000', '2020-05-10T00:00:00.000')
+    time_range = ('2020-09-01T00:00:00.000', '2020-10-01T00:00:00.000')
 
     # ids = ids_from_server(index='appevents', time_range=time_range)
-    ids = ids_from_file(hlp.DATA_DIR, file_name='glance_ids')
-    data = split_pipeline(ids=ids[:1], subfolder=True,
-                          dir=os.path.join(hlp.DATA_DIR, 'glance'),
+    # ids = ids_from_file(hlp.DATA_DIR, file_name='glance_ids')
+
+    ids = [
+        "0a8ee96a-a76c-4c9d-b808-947b32c745de",
+        "a0b8672d-6d4b-4b82-8bae-f14b8f2ce932",
+        "d0288296-2e0d-4dac-826f-5cd5f239c240"
+    ]
+
+    # Test connectivity export
+    data = split_pipeline(ids=ids, subfolder=False,
+                          dir=os.path.join(hlp.DATA_DIR, 'connectivity'),
                           time_range=time_range,
-                          indices=(['sessions']),
+                          indices=(['connectivity']),
                           parquet=False,
-                          csv_file=False)
+                          csv_file=True)
 
-
+    data = pipeline(ids=ids, subfolder=False,
+                    name="connectivity_test",
+                          dir=os.path.join(hlp.DATA_DIR, 'connectivity'),
+                          time_range=time_range,
+                          indices=(['connectivity']),
+                          parquet=False,
+                          csv_file=True)
