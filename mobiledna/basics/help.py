@@ -370,13 +370,14 @@ def check_index(df: pd.DataFrame, index: str, ignore_error=False) -> bool:
     if index not in INDICES:
         raise Exception(
             "ERROR: When checking index type, please enter valid index"
-            " ('appevents','notifications','logs', or 'sessions'.")
+            " ('appevents','notifications', 'logs', 'sessions' or 'connectivity'.")
 
     unique_columns = {
         'appevents': 'session',
         'notifications': 'time',
         'sessions': 'session on',
-        'logs': 'date'
+        'logs': 'date',
+        'connectivity': 'networkOperatorName'
     }
 
     # Check what type of data we're dealing with in reality

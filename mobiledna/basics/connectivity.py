@@ -136,7 +136,7 @@ class Connectivity:
         """
         Returns average signal strength
 
-        :param signal_type: signal type variable selection (default: "dbm", alternative: "asu)
+        :param signal_type: signal type variable selection (default: "dbm", alternative: "asu")
         """
         if signal_type.lower() == "dbm":
             name = "average_signal_dbm"
