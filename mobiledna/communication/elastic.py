@@ -559,7 +559,9 @@ if __name__ in ['__main__', 'builtins']:
     ids = [
         "0a8ee96a-a76c-4c9d-b808-947b32c745de",
         "a0b8672d-6d4b-4b82-8bae-f14b8f2ce932",
-        "d0288296-2e0d-4dac-826f-5cd5f239c240"
+        "d0288296-2e0d-4dac-826f-5cd5f239c240",
+        "82af8961-c92b-4e87-bb19-f9d790b7427d",
+        "a18ce6f9-a033-4eaf-833e-362a7e1aec3c"
     ]
 
     # Test connectivity export
