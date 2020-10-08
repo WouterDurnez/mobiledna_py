@@ -140,7 +140,7 @@ class Appevents:
             pickle.dump(self, file, pickle.HIGHEST_PROTOCOL)
         file.close()
 
-    def filter(self, category=None, application=None, from_push=None, day_types=None, inplace=False):
+    def filter(self, users=None, category=None, application=None, from_push=None, day_types=None, inplace=False):
 
         # If we want category-specific info, make sure we have category column
         if category:
@@ -162,8 +162,15 @@ class Appevents:
         else:
             data = self.__data__
 
+        # If we only want appevents started from push notifications
         if from_push:
             data = data.loc[data.notification == from_push]
+
+        # If we want specific users
+        if users:
+            users = [users] if not isinstance(users, list) else users
+
+            data = data.loc[data.id.isin(users)]
 
         if day_types:
             day_types = [day_types] if not isinstance(day_types, list) else day_types
@@ -173,6 +180,7 @@ class Appevents:
 
             # ... and filter
             data = data.loc[self.__data__.startDOTW.isin(day_types)]
+
 
         if inplace:
             self.__data__ = data
@@ -363,6 +371,15 @@ class Appevents:
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.mean().rename(name)
 
+    def get_daily_active_sessions(self) -> pd.Series:
+
+        name = 'daily_active_sessions'
+
+        data = self.__data__
+
+        return data.groupby(['id', 'startDate']).session.count().reset_index(). \
+            groupby('id').session.mean().rename(name)
+
     def get_daily_events_sd(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
         """
         Returns standard deviation on number of events per day
@@ -396,6 +413,15 @@ class Appevents:
 
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.std().rename(name)
+
+    def get_daily_active_sessions_sd(self) -> pd.Series:
+
+        name = 'daily_active_sessions_sd'
+
+        data = self.__data__
+
+        return data.groupby(['id', 'startDate']).session.count().reset_index(). \
+            groupby('id').session.std().rename(name)
 
     def get_sessions_starting_with(self, category=None, application=None, normalize=False):
 

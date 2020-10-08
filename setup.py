@@ -8,7 +8,7 @@ def readme():
 
 
 setup(name='mobiledna',
-      version='0.4',
+      version='0.5',
       description='Codebase in support of mobileDNA platform',
       long_description='mobileDNA is a __data__ logging app that sheds '
                        'light on smartphone usage. Data collected '

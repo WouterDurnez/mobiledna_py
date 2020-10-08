@@ -70,7 +70,9 @@ INDEX_FIELDS = {
         'id',
         'sessionID',
         'studyKey',
-        'surveyId'
+        'surveyId',
+        'session on',  # TODO: remove later
+        'session off'  # TODO: remove later
     ],
     'logs': [
         'data_version',
@@ -310,7 +312,7 @@ def longest_uninterrupted(df: pd.DataFrame, column='startDate') -> pd.DataFrame:
         previous = date
 
     # Print some output
-    log(f"Longest uninterrupted log period for {df.id[0]}: {len(longest)} days.")
+    log(f"Longest uninterrupted log period for {df.id.iloc[0]}: {len(longest)} days.")
 
     # Filter data frame
     df = df.loc[df[column].isin(longest)]
@@ -455,18 +457,28 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
         df.rename(columns={'timestamp': 'startTime'}, inplace=True)
 
         # Add end timestamp
-        # df['endTime'] = df.groupby('id')['startTime'].shift(-1)
-        # df['session off'] = df.groupby('id')['session on'].shift(-1)
+        df['endTime'] = df.groupby('id')['startTime'].shift(-1)
+        df['session off'] = df.groupby('id')['session on'].shift(-1)
         # print(df.head(20))
 
         # Add ID which links with appevents index
         df['sessionID'] = pd.to_numeric(df['startTime'].astype(int) - 3600, downcast='unsigned')
+        print('original', len(df))
 
-        # Filter out bogus rows
-        number_of_old_sessions = len(df['session on'] == True)
-        # df = df.loc[(df['session on'] == True) & (df['session off'] == False)]
-        log(f"Formatted sessions, account for {len(df)}/{number_of_old_sessions} "
-            f"({100 * np.round(len(df) / number_of_old_sessions, 2)}%)", lvl=3)
+        # Get indices for valid entries, that have a start and a stop to them
+        valids = (df['session on'] == True) & (df['session off'] == False)
+        print('valids', np.sum(valids))
+
+        # Remove bogus rows
+        df = df.loc[df['session on'] == True]
+
+        # Mark the end time of invalid entries as nan
+        # df = df.loc[df['session off'] == True]
+        df.loc[(df['session off'] == True), 'endTime'] = None
+
+        # Return some info
+        log(f"Formatted sessions, accounted for {np.sum(valids)}/{len(df)} "
+            f"({100 * np.round(np.sum(valids) / len(df), 2)}%)", lvl=3)
 
     elif index == 'logs':
 
