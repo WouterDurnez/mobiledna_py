@@ -32,7 +32,8 @@ setup(name='mobiledna',
           'tqdm',
           'matplotlib',
           'elasticsearch<=6.3.1',
-          'pyarrow'
+          'pyarrow',
+          'holidays'
       ],
       include_package_data=True,
       zip_safe=False)

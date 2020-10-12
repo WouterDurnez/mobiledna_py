@@ -14,7 +14,6 @@ APPEVENTS CLASS
 """
 
 import pickle
-from collections import Counter
 
 import pandas as pd
 from tqdm import tqdm
@@ -281,10 +280,22 @@ class Appevents:
 
     def get_applications(self) -> dict:
         """
-        Returns an {app: app count} dictionary
+        Returns applications and their frequency
         """
 
-        return Counter(list(self.__data__.application))
+        return self.__data__.application.value_counts()
+
+    def get_categories(self):
+        """
+        Returns categories and their frequency
+        """
+
+        # Add categories if not present
+        if 'category' not in self.__data__.columns:
+            log('Data not annotated with categories yet. Fixing...', lvl=1)
+            self.add_category()
+
+        return self.__data__.category.value_counts()
 
     def get_dates(self, relative=False) -> list:
         """
@@ -372,6 +383,9 @@ class Appevents:
             groupby('id').duration.mean().rename(name)
 
     def get_daily_active_sessions(self) -> pd.Series:
+        """
+        Returns daily number of sessions based on appevent activity
+        """
 
         name = 'daily_active_sessions'
 
@@ -399,7 +413,7 @@ class Appevents:
 
     def get_daily_duration_sd(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
         """
-        Returns duration per day
+        Returns standard deviation on duration per days
         """
 
         # Field name
@@ -415,6 +429,9 @@ class Appevents:
             groupby('id').duration.std().rename(name)
 
     def get_daily_active_sessions_sd(self) -> pd.Series:
+        """
+        Returns standard deviation on daily number of sessions based on appevent activity
+        """
 
         name = 'daily_active_sessions_sd'
 
