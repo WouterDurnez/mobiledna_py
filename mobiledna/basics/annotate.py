@@ -201,9 +201,9 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFram
     return df
 
 
-#####################################
-# Weekends, holidays, working hours #
-#####################################
+##################################################
+# Weekends, holidays, working hours, time of day #
+##################################################
 
 # Holidays --> complete with non-standard days
 be_holidays = holidays.BE()
@@ -221,25 +221,7 @@ schedule = {
 }
 
 
-def annotate_date(date: dt.datetime) -> str:
-    # Get weekday, hour, minute and second
-    dt = date.date()
-    tm = date.time()
-    wd = date.weekday()
-
-    # Weekend?
-    if wd >= 5:
-        return "weekend"
-
-    # Holiday?
-    if dt in be_holidays:
-        return "holiday"
-
-    # Else: regular weekday
-    return "week"
-
-
-def add_date_annotation(df: pd.DataFrame, date_cols: list) -> pd.DataFrame:
+def add_date_annotation(df: pd.DataFrame, date_cols: list, holidays_separate=False) -> pd.DataFrame:
     """
     Annotate dates in dataframe (holiday, week or weekend)
     :param df: data frame
@@ -249,6 +231,23 @@ def add_date_annotation(df: pd.DataFrame, date_cols: list) -> pd.DataFrame:
 
     # Type check
     date_cols = date_cols if isinstance(date_cols, list) else [date_cols]
+
+    # Mapping dates to types of days
+    def label_date(date: dt.datetime, holidays_separate=holidays_separate) -> str:
+        # Get weekday, hour, minute and second
+        dt = date.date()
+        wd = date.weekday()
+
+        # Weekend?
+        if wd >= 5:
+            return "weekend"
+
+        # Holiday?
+        if dt in be_holidays and holidays_separate:
+            return "holiday"
+
+        # Else: regular weekday
+        return "week"
 
     # Loop over date columns
     for date_col in date_cols:
@@ -260,7 +259,50 @@ def add_date_annotation(df: pd.DataFrame, date_cols: list) -> pd.DataFrame:
 
         # Process each row
         tqdm.pandas(desc=f"Adding dotw <{date_col}>", position=0, leave=True)
-        df[new_col] = df.progress_apply(lambda row: annotate_date(row[date_col]), axis=1)
+        df[new_col] = df[date_col].progress_apply(lambda row: label_date(row))
+
+    return df
+
+
+def add_time_of_day_annotation(df: pd.DataFrame, time_cols: list = ['startTime']):
+    """
+    Add time of day annotation depending on datetime field
+    :param df: appevents dataframe
+    :return: annotated dataframe
+    """
+
+    # Type check
+    time_cols = time_cols if isinstance(time_cols, list) else [time_cols]
+
+    # Mapping hours to time zones
+    def label_hour(x):
+        if x <= 4:
+            return 'late_night'
+        elif x <= 8:
+            return 'early_morning'
+        elif x <= 12:
+            return 'morning'
+        elif x <= 16:
+            return 'noon'
+        elif x <= 20:
+            return 'eve'
+        else:
+            return 'night'
+
+    # Looping over time columns
+    for time_col in time_cols:
+        # Make sure they're in the correct format
+        df[time_col] = pd.to_datetime(df[time_col])
+
+        # Get hour of day information
+        hours = df[time_col].dt.hour
+
+        # Get new name (subtract date, add day of the week)
+        new_col = time_col[:-4] + 'TOD'
+
+        # Process each row
+        tqdm.pandas(desc=f"Adding tod <{time_col}>", position=0, leave=True)
+        df[new_col] = hours.progress_apply(label_hour)
 
     return df
 

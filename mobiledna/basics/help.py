@@ -625,7 +625,7 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
     if parquet:
 
         try:
-            df.to_parquet(path=path + ".parquet", engine='auto', compression='snappy')
+            df.to_parquet(fname=path + ".parquet", engine='auto', compression='snappy')
             log("Saved data frame to {}".format(path + ".parquet"))
 
         except Exception as e:

@@ -19,7 +19,7 @@ import pandas as pd
 from tqdm import tqdm
 
 import mobiledna.basics.help as hlp
-from mobiledna.basics.annotate import add_category, add_date_annotation
+from mobiledna.basics.annotate import add_category, add_date_annotation, add_time_of_day_annotation
 from mobiledna.basics.help import log, remove_first_and_last, longest_uninterrupted
 
 
@@ -76,7 +76,7 @@ class Appevents:
 
         # Add date annotations on request
         if add_date_annotation:
-            self.add_date_annotation()
+            self.add_date_type()
 
         # Strip on request
         if strip:
@@ -175,7 +175,7 @@ class Appevents:
             day_types = [day_types] if not isinstance(day_types, list) else day_types
 
             if 'startDOTW' not in self.__data__.columns:
-                self.add_date_annotation()
+                self.add_date_type()
 
             # ... and filter
             data = data.loc[self.__data__.startDOTW.isin(day_types)]
@@ -254,12 +254,15 @@ class Appevents:
 
         return self
 
-    def add_date_annotation(self, date_cols=None):
-
-        if not date_cols:
-            date_cols = 'startDate'
+    def add_date_type(self, date_cols='startDate'):
 
         self.__data__ = add_date_annotation(df=self.__data__, date_cols=date_cols)
+
+        return self
+
+    def add_time_of_day(self, time_col='startTime'):
+
+        self.__data__ = add_time_of_day_annotation(df=self.__data__, time_cols=time_col)
 
         return self
 
@@ -278,12 +281,14 @@ class Appevents:
         """
         return list(self.__data__.id.unique())
 
-    def get_applications(self) -> dict:
+    def get_applications(self, by: str = 'events') -> dict:
         """
         Returns applications and their frequency
         """
-
-        return self.__data__.application.value_counts()
+        if by == 'events':
+            return self.__data__.application.value_counts()
+        elif by == 'duration':
+            return self.__data__.groupby('application').duration.sum().sort_values(ascending=False)
 
     def get_categories(self):
         """
