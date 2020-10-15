@@ -17,7 +17,7 @@ import pickle
 
 import pandas as pd
 
-import mobiledna.basics.help as hlp
+import mobiledna.core.help as hlp
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -63,7 +63,7 @@ class Sessions:
         :return: Sessions object
         """
 
-        data = hlp.load(path=path, index='session', file_type=file_type, sep=sep, dec=decimal)
+        data = hlp.load(path=path, index='sessions', file_type=file_type, sep=sep, dec=decimal)
 
         return cls(data=data)
 
@@ -210,8 +210,8 @@ if __name__ == "__main__":
                     index='sessions')
 
     se = Sessions(data=data)
-    se2 = Sessions.load(path="../../data/glance/sessions/0a0fe3ed-d788-4427-8820-8b7b696a6033_sessions.parquet",
-                        sep=";")
+    se2 = Sessions.load_data(path="../../data/glance/sessions/0a0fe3ed-d788-4427-8820-8b7b696a6033_sessions.parquet",
+                             sep=";")
 
     se3 = se2.merge(data)
 

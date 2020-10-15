@@ -26,8 +26,8 @@ from bs4 import BeautifulSoup
 from requests import get
 from tqdm import tqdm
 
-from mobiledna.basics import help as hlp
-from mobiledna.basics.help import log
+from mobiledna.core import help as hlp
+from mobiledna.core.help import log
 
 
 ##################
@@ -184,19 +184,19 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFram
         meta, _ = scrape_play_store(app_names=applications, cache=meta, overwrite=overwrite)
 
     # Add category field to row
-    def adding_category_row(row: pd.Series):
+    def adding_category_row(app: str):
 
-        if row.application in meta.keys() and meta[row.application]['genre']:
+        if app in meta.keys() and meta[app]['genre']:
             try:
-                return meta[row.application]['genre'].lower()
+                return meta[app]['genre'].lower()
             except:
-                print(f"Exception for {row.application}")
-                return meta[row.application]['genre']
+                print(f"Exception for {app}")
+                return meta[app]['genre']
         else:
             return 'unknown'
 
     tqdm.pandas(desc="Adding category", position=0, leave=True)
-    df['category'] = df.progress_apply(adding_category_row, axis=1)
+    df['category'] = df.application.progress_apply(adding_category_row)
 
     return df
 

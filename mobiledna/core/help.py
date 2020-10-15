@@ -324,7 +324,7 @@ def longest_uninterrupted(df: pd.DataFrame, column='startDate') -> pd.DataFrame:
 # Initialization functions #
 ############################
 
-def hi():
+def hi(title=None):
     """
     Say hello. (It's stupid, I know.)
     If there's anything to initialize, do so here.
@@ -336,7 +336,10 @@ def hi():
     print("  / /|_/ / __ \/ __ \/ / / _ \/ / / /  |/ / /| |")
     print(" / /  / / /_/ / /_/ / / /  __/ /_/ / /|  / ___ |")
     print("/_/  /_/\____/_.___/_/_/\___/_____/_/ |_/_/  |_|")
-    print("\n")
+    print("")
+
+    if title:
+        log(title, title=True)
 
     print("LOG_LEVEL is set to {}.".format(LOG_LEVEL))
     print("DATA_DIR is set to {}".format(DATA_DIR))

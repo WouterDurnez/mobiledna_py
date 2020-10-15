@@ -23,9 +23,9 @@ from pprint import PrettyPrinter
 import pandas as pd
 from elasticsearch import Elasticsearch
 
-import mobiledna.basics.help as hlp
 import mobiledna.communication.config as cfg
-from mobiledna.basics.help import log
+import mobiledna.core.help as hlp
+from mobiledna.core.help import log
 
 # Globals
 pp = PrettyPrinter(indent=4)

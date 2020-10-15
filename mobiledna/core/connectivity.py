@@ -17,7 +17,7 @@ import pickle
 
 import pandas as pd
 
-import mobiledna.basics.help as hlp
+import mobiledna.core.help as hlp
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)

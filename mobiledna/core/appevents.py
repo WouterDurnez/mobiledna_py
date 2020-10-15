@@ -18,10 +18,13 @@ import pickle
 import pandas as pd
 from tqdm import tqdm
 
-import mobiledna.basics.help as hlp
-from mobiledna.basics.annotate import add_category, add_date_annotation, add_time_of_day_annotation
-from mobiledna.basics.help import log, remove_first_and_last, longest_uninterrupted
+import mobiledna.core.help as hlp
+from mobiledna.core.annotate import add_category, add_date_annotation, add_time_of_day_annotation
+from mobiledna.core.help import log, remove_first_and_last, longest_uninterrupted
 
+
+# TODO
+# * Calculate session duration (based on first and last appevent)
 
 class Appevents:
 
@@ -254,9 +257,9 @@ class Appevents:
 
         return self
 
-    def add_date_type(self, date_cols='startDate'):
+    def add_date_type(self, date_cols='startDate', holidays_separate=False):
 
-        self.__data__ = add_date_annotation(df=self.__data__, date_cols=date_cols)
+        self.__data__ = add_date_annotation(df=self.__data__, date_cols=date_cols, holidays_separate=holidays_separate)
 
         return self
 
@@ -289,8 +292,11 @@ class Appevents:
             return self.__data__.application.value_counts()
         elif by == 'duration':
             return self.__data__.groupby('application').duration.sum().sort_values(ascending=False)
+        else:
+            log("Cannot get applications according to that metric. Choose 'events' or 'duration'.", lvl=1)
+            return {}
 
-    def get_categories(self):
+    def get_categories(self, by: str = 'events') -> dict:
         """
         Returns categories and their frequency
         """
@@ -300,7 +306,13 @@ class Appevents:
             log('Data not annotated with categories yet. Fixing...', lvl=1)
             self.add_category()
 
-        return self.__data__.category.value_counts()
+        if by == 'events':
+            return self.__data__.category.value_counts()
+        elif by == 'duration':
+            return self.__data__.groupby('category').duration.sum().sort_values(ascending=False)
+        else:
+            log("Cannot get categories according to that metric. Choose 'events' or 'duration'.", lvl=1)
+            return {}
 
     def get_dates(self, relative=False) -> list:
         """

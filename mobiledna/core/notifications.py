@@ -17,9 +17,9 @@ from collections import Counter
 
 import pandas as pd
 
-import mobiledna.basics.help as hlp
-from mobiledna.basics.annotate import add_category
-from mobiledna.basics.help import log
+import mobiledna.core.help as hlp
+from mobiledna.core.annotate import add_category
+from mobiledna.core.help import log
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
