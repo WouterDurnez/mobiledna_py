@@ -551,31 +551,33 @@ if __name__ in ['__main__', 'builtins']:
     hlp.hi()
     hlp.set_param(log_level=3)
 
-    time_range = ('2020-09-01T00:00:00.000', '2020-10-01T00:00:00.000')
+    time_range = ('2020-03-01T00:00:00.000', '2020-04-21T00:00:00.000')
 
     # ids = ids_from_server(index='appevents', time_range=time_range)
-    # ids = ids_from_file(hlp.DATA_DIR, file_name='glance_ids')
+    ids = ids_from_file(hlp.DATA_DIR, file_name='test_ids')
 
-    ids = [
+    """ids = [
         "0a8ee96a-a76c-4c9d-b808-947b32c745de",
         "a0b8672d-6d4b-4b82-8bae-f14b8f2ce932",
         "d0288296-2e0d-4dac-826f-5cd5f239c240",
         "82af8961-c92b-4e87-bb19-f9d790b7427d",
         "a18ce6f9-a033-4eaf-833e-362a7e1aec3c"
-    ]
+    ]"""
 
     # Test connectivity export
+    """
     data = split_pipeline(ids=ids, subfolder=False,
                           dir=os.path.join(hlp.DATA_DIR, 'connectivity'),
                           time_range=time_range,
                           indices=(['connectivity']),
                           parquet=False,
                           csv_file=True)
+    """
 
     data = pipeline(ids=ids, subfolder=False,
-                    name="connectivity_test",
-                          dir=os.path.join(hlp.DATA_DIR, 'connectivity'),
+                    name="notifications",
+                          dir=os.path.join(hlp.DATA_DIR),
                           time_range=time_range,
-                          indices=(['connectivity']),
+                          indices=(['notifications']),
                           parquet=False,
                           csv_file=True)

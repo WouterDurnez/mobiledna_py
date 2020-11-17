@@ -466,7 +466,7 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
         # print(df.head(20))
 
         # Add ID which links with appevents index
-        df['sessionID'] = pd.to_numeric(df['startTime'].astype(int) - 3600, downcast='unsigned')
+        df['sessionID'] = pd.to_numeric(df['startTime'], downcast='unsigned') - 3600
         print('original', len(df))
 
         # Get indices for valid entries, that have a start and a stop to them
@@ -696,11 +696,12 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
             df.drop(labels=[col], axis=1, inplace=True)
 
     # Add duration if necessary
+    """
     if 'duration' not in df and (
             check_index(df=df, index='appevents', ignore_error=True) or
             check_index(df=df, index='sessions', ignore_error=True)):
         add_duration(df)
-
+    """
     return df
 
 
