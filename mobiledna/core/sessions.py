@@ -148,7 +148,7 @@ class Sessions:
         """
         Returns the total duration
         """
-        return self.__data__ .groupby('id').duration.sum().rename('durations')
+        return self.__data__.groupby('id').duration.sum().rename('durations')
 
     # Compound getters #
     ####################
