@@ -22,6 +22,8 @@ import mobiledna.core.help as hlp
 from mobiledna.core.annotate import add_category, add_date_annotation, add_time_of_day_annotation
 from mobiledna.core.help import log, remove_first_and_last, longest_uninterrupted
 
+tqdm.pandas()
+
 
 # TODO
 # * Calculate session duration (based on first and last appevent)
@@ -31,6 +33,12 @@ class Appevents:
     def __init__(self, data: pd.DataFrame = None, add_categories=False, add_date_annotation=False,
                  get_session_sequences=False, strip=False):
 
+        # Drop 'Unnamed' columns
+        for col in data.columns:
+
+            if col.startswith('Unnamed'):
+                data.drop(labels=[col], axis=1, inplace=True)
+
         # Set dtypes #
         ##############
 
@@ -38,14 +46,17 @@ class Appevents:
         try:
             data.startTime = data.startTime.astype('datetime64[ns]')
         except Exception as e:
-            print('Could not convert startTime column to datetime format: ', e)
+            log('Could not convert startTime column to datetime format: ', e)
         try:
             data.endTime = data.endTime.astype('datetime64[ns]')
         except Exception as e:
-            print('Could not convert endTime column to datetime format.', e)
+            log('Could not convert endTime column to datetime format: ', e)
 
         # Downcast battery column
-        data.battery = data.battery.astype('uint8')
+        try:
+            data.battery = data.battery.astype('uint8')
+        except Exception as e:
+            log('Could not convert battery column to uint8 format: ', e)
 
         # Factorize ids
         # data.id = data.id.astype('category')
@@ -83,7 +94,7 @@ class Appevents:
 
         # Strip on request
         if strip:
-            self.strip()
+            self.strip(number_of_days=14)
 
         # Initialize attributes
         self.__session_sequences__ = self.get_session_sequences() if get_session_sequences else None
@@ -138,11 +149,17 @@ class Appevents:
         :return: None
         """
 
+        # Setting directory
+        dir = '/'.join(path.split('/')[:-1])
+        hlp.set_dir(dir)
+
+        # Storing pickle
         with open(file=path, mode='wb') as file:
             pickle.dump(self, file, pickle.HIGHEST_PROTOCOL)
         file.close()
 
-    def filter(self, users=None, category=None, application=None, from_push=None, day_types=None, inplace=False):
+    def filter(self, users=None, category=None, application=None, from_push=None, day_types=None, time_of_day=None,
+               inplace=False):
 
         # If we want category-specific info, make sure we have category column
         if category:
@@ -174,6 +191,7 @@ class Appevents:
 
             data = data.loc[data.id.isin(users)]
 
+        # If we want specific day types (week, weekend)
         if day_types:
             day_types = [day_types] if not isinstance(day_types, list) else day_types
 
@@ -181,8 +199,17 @@ class Appevents:
                 self.add_date_type()
 
             # ... and filter
-            data = data.loc[self.__data__.startDOTW.isin(day_types)]
+            data = data.loc[data.startDOTW.isin(day_types)]
 
+        # If we want specific times fo day (morning, noon, etc.)
+        if time_of_day:
+            time_of_day = [time_of_day] if not isinstance(time_of_day, list) else time_of_day
+
+            if 'startTOD' not in self.__data__.columns:
+                self.add_time_of_day()
+
+            # ... and filter
+            data = data.loc[data.startTOD.isin(time_of_day)]
 
         if inplace:
             self.__data__ = data
@@ -190,23 +217,30 @@ class Appevents:
         else:
             return data
 
-    def strip(self, number_of_days=None):
+    def strip(self, number_of_days=None, min_log_days=None):
 
         if self.__stripped__:
             log('Already stripped this Appevents object!', lvl=1)
             return self
 
+        log('Stripping object to longest uninterrupted sequence.')
         # Get longest uninterrupted sequence
-        self.__data__ = self.__data__.groupby('id').apply(lambda df: longest_uninterrupted(df=df)).reset_index(
+        tqdm.pandas(desc="Finding longest uninterrupted sequence.", position=0, leave=True)
+        self.__data__ = self.__data__.groupby('id').progress_apply(lambda df: longest_uninterrupted(df=df)).reset_index(
             drop=True)
 
         # Cut off head and tail
-        self.__data__ = self.__data__.groupby('id').apply(lambda df: remove_first_and_last(df=df)).reset_index(
+        tqdm.pandas(desc="Cutting off head and tail.", position=0, leave=True)
+        self.__data__ = self.__data__.groupby('id').progress_apply(lambda df: remove_first_and_last(df=df)).reset_index(
             drop=True)
 
         # If a number of days is set
         if number_of_days:
             self.select_n_first_days(n=number_of_days, inplace=True)
+
+        # If a minimum number of log days is set
+        if min_log_days:
+            self.impose_min_days(n=min_log_days, inplace=True)
 
         # Remember that we did this
         self.__stripped__ = True
@@ -238,6 +272,20 @@ class Appevents:
 
         else:
             return selection
+
+    def impose_min_days(self, n: int, inplace=False):
+        """
+        Filter out users that don't have a minimum of n log days
+        :param n: number of log days
+        :param inplace: either manipulate object, or return copy
+        :return: object or copy, depending on inplace parameter
+        """
+
+        if inplace:
+            self.filter(users=list(self.get_days()[(self.get_days() >= n)].index), inplace=True)
+            return self
+        else:
+            return self.filter(users=list(self.get_days()[(self.get_days() >= n)].index), inplace=False)
 
     def merge(self, *appevents: pd.DataFrame):
         """
@@ -365,7 +413,8 @@ class Appevents:
     # Compound getters #
     ####################
 
-    def get_daily_events(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
+    def get_daily_events(self, category=None, application=None, from_push=None, day_types=None,
+                         time_of_day=None) -> pd.Series:
         """
         Returns number of appevents per day
         """
@@ -374,15 +423,18 @@ class Appevents:
         name = ('daily_events' +
                 (f'_{category}' if category else '') +
                 (f'_{application}' if application else '') +
-                (f'_{day_types}' if day_types else '')).lower()
+                (f'_{day_types}' if day_types else '') +
+                (f'_{time_of_day}' if time_of_day else '')).lower()
 
         # Filter data on request
-        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types)
+        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types,
+                           time_of_day=time_of_day)
 
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
             groupby('id').application.mean().rename(name)
 
-    def get_daily_duration(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
+    def get_daily_duration(self, category=None, application=None, from_push=None, day_types=None,
+                           time_of_day=None) -> pd.Series:
         """
         Returns duration per day
         """
@@ -391,10 +443,12 @@ class Appevents:
         name = ('daily_durations' +
                 (f'_{category}' if category else '') +
                 (f'_{application}' if application else '') +
-                (f'_{day_types}' if day_types else '')).lower()
+                (f'_{day_types}' if day_types else '') +
+                (f'_{time_of_day}' if time_of_day else '')).lower()
 
         # Filter data on request
-        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types)
+        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types,
+                           time_of_day=time_of_day)
 
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.mean().rename(name)
@@ -411,7 +465,17 @@ class Appevents:
         return data.groupby(['id', 'startDate']).session.count().reset_index(). \
             groupby('id').session.mean().rename(name)
 
-    def get_daily_events_sd(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
+    def get_daily_number_of_apps(self) -> pd.Series:
+
+        name = 'daily_number_of_apps'
+
+        data = self.__data__
+
+        return data.groupby(['id', 'startDate']).application.count().reset_index(). \
+            groupby('id').application.mean().rename(name)
+
+    def get_daily_events_sd(self, category=None, application=None, from_push=None, day_types=None,
+                            time_of_day=None) -> pd.Series:
         """
         Returns standard deviation on number of events per day
         """
@@ -420,15 +484,18 @@ class Appevents:
         name = ('daily_events_sd' +
                 (f'_{category}' if category else '') +
                 (f'_{application}' if application else '') +
-                (f'_{day_types}' if day_types else '')).lower()
+                (f'_{day_types}' if day_types else '') +
+                (f'_{time_of_day}' if time_of_day else '')).lower()
 
         # Filter __data__ on request
-        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types)
+        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types,
+                           time_of_day=time_of_day)
 
         return data.groupby(['id', 'startDate']).application.count().reset_index(). \
             groupby('id').application.std().rename(name)
 
-    def get_daily_duration_sd(self, category=None, application=None, from_push=None, day_types=None) -> pd.Series:
+    def get_daily_duration_sd(self, category=None, application=None, from_push=None, day_types=None,
+                              time_of_day=None) -> pd.Series:
         """
         Returns standard deviation on duration per days
         """
@@ -437,10 +504,12 @@ class Appevents:
         name = ('daily_durations_sd' +
                 (f'_{category}' if category else '') +
                 (f'_{application}' if application else '') +
-                (f'_{day_types}' if day_types else '')).lower()
+                (f'_{day_types}' if day_types else '') +
+                (f'_{time_of_day}' if time_of_day else '')).lower()
 
         # Filter __data__ on request
-        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types)
+        data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types,
+                           time_of_day=time_of_day)
 
         return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
             groupby('id').duration.std().rename(name)
@@ -456,6 +525,15 @@ class Appevents:
 
         return data.groupby(['id', 'startDate']).session.count().reset_index(). \
             groupby('id').session.std().rename(name)
+
+    def get_daily_number_of_apps_sd(self) -> pd.Series:
+
+        name = 'daily_number_of_apps_sd'
+
+        data = self.__data__
+
+        return data.groupby(['id', 'startDate']).application.count().reset_index(). \
+            groupby('id').application.std().rename(name)
 
     def get_sessions_starting_with(self, category=None, application=None, normalize=False):
 

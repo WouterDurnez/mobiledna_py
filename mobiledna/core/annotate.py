@@ -168,10 +168,11 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFram
 
     # Load app meta data
     try:
-        meta = np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item()
+        meta = dict(np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item())
     except Exception as e:
         log('No app meta data found. Scraping Play store.', lvl=1)
         scrape = True
+        meta = {}
 
     # Check if data frame has an application field
     if 'application' not in df:
@@ -310,10 +311,10 @@ def add_time_of_day_annotation(df: pd.DataFrame, time_cols: list = ['startTime']
 if __name__ == '__main__':
     # Let's go
     hlp.hi()
-    hlp.set_dir(join(pardir, pardir, 'cache'))
+    hlp.set_dir(join(pardir, 'cache'))
     hlp.set_param(log_level=1,
                   data_dir=join(pardir, pardir, 'data', 'glance', 'processed_appevents'),
-                  cache_dir=join(pardir, pardir, 'cache'))
+                  cache_dir=join(pardir, 'cache'))
 
     # Load the data and gather apps
     log('Collecting app names.', lvl=1)

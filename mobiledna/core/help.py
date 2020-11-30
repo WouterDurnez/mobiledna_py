@@ -33,7 +33,7 @@ pp = PrettyPrinter(indent=4)
 # Set log level (1 = only top level log messages -> 3 = all log messages)
 LOG_LEVEL = 3
 DATA_DIR = os.path.join(os.pardir, os.pardir, 'data')
-CACHE_DIR = os.path.join(os.pardir, os.pardir, 'cache')
+CACHE_DIR = os.path.join(os.pardir, 'cache')
 INDICES = {'notifications', 'appevents', 'sessions', 'logs', 'connectivity'}
 INDEX_FIELDS = {
     'notifications': [
@@ -511,6 +511,16 @@ def add_duration(df: pd.DataFrame, clear_negatives=True) -> pd.DataFrame:
             'endTime' not in df.columns:
         raise Exception("ERROR: Necessary columns missing!")
 
+    # Convert to correct data types
+    try:
+        df.startTime = df.startTime.astype('datetime64[ns]')
+    except Exception as e:
+        print('Could not convert startTime column to datetime format: ', e)
+    try:
+        df.endTime = df.endTime.astype('datetime64[ns]')
+    except Exception as e:
+        print('Could not convert endTime column to datetime format.', e)
+
     # Calculate duration (in seconds)
     try:
         df['duration'] = (df['endTime'] - df['startTime']).dt.total_seconds()
@@ -542,6 +552,7 @@ def add_dates(df: pd.DataFrame, index: str) -> pd.DataFrame:
     """
     if index == 'appevents' or index == 'sessions':
 
+        df['startDate'] = pd.to_datetime(df.startTime.dt.date)
         df['startDate'] = pd.to_datetime(df.startTime.dt.date)
         df['endDate'] = pd.to_datetime(df.endTime.dt.date)
 
@@ -606,7 +617,7 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
         try:
 
             df.to_csv(path_or_buf=path + ".csv", sep=";", decimal='.')
-            log("Saved data frame to {}".format(path + ".csv_file"))
+            log("Saved data frame to {}".format(path + ".csv"))
 
         except Exception as e:
 

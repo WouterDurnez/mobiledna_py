@@ -1,2 +1,6 @@
 include README.md
-include cache/*
+include mobiledna/cache/*
+
+prune communication/config.py
+
+
