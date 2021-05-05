@@ -13,9 +13,9 @@ APPEVENTS CLASS
 -- mailto:Wouter.Durnez@UGent.be
 """
 
-import pickle
-
 import pandas as pd
+import pickle
+from os.path import join
 from tqdm import tqdm
 
 import mobiledna.core.help as hlp
@@ -27,6 +27,7 @@ tqdm.pandas()
 
 # TODO
 # * Calculate session duration (based on first and last appevent)
+#
 
 class Appevents:
 
@@ -57,15 +58,6 @@ class Appevents:
             data.battery = data.battery.astype('uint8')
         except Exception as e:
             log('Could not convert battery column to uint8 format: ', e)
-
-        # Factorize ids
-        # data.id = data.id.astype('category')
-
-        # Factorize apps
-        # data.application = data.application.astype('category')
-
-        # Factorize sessions
-        # data.session = data.session.astype('category')
 
         # Sort data frame
         data.sort_values(by=['id', 'startTime'], inplace=True)
@@ -187,8 +179,7 @@ class Appevents:
 
         # If we want specific users
         if users:
-            users = [users] if not isinstance(users, list) else users
-
+            users = [users] if not (isinstance(users, list) or isinstance(users, set)) else users
             data = data.loc[data.id.isin(users)]
 
         # If we want specific day types (week, weekend)
@@ -223,14 +214,13 @@ class Appevents:
             log('Already stripped this Appevents object!', lvl=1)
             return self
 
-        log('Stripping object to longest uninterrupted sequence.')
-        # Get longest uninterrupted sequence
-        tqdm.pandas(desc="Finding longest uninterrupted sequence.", position=0, leave=True)
+            # Get longest uninterrupted sequence
+        tqdm.pandas(desc="Finding longest uninterrupted sequence", position=0, leave=True)
         self.__data__ = self.__data__.groupby('id').progress_apply(lambda df: longest_uninterrupted(df=df)).reset_index(
             drop=True)
 
         # Cut off head and tail
-        tqdm.pandas(desc="Cutting off head and tail.", position=0, leave=True)
+        tqdm.pandas(desc="Cutting off head and tail", position=0, leave=True)
         self.__data__ = self.__data__.groupby('id').progress_apply(lambda df: remove_first_and_last(df=df)).reset_index(
             drop=True)
 
@@ -296,6 +286,7 @@ class Appevents:
         """
 
         new_data = pd.concat([self.__data__, *appevents], sort=False)
+        new_data.drop_duplicates(inplace=True)
 
         return Appevents(data=new_data)
 
@@ -362,17 +353,20 @@ class Appevents:
             log("Cannot get categories according to that metric. Choose 'events' or 'duration'.", lvl=1)
             return {}
 
-    def get_dates(self, relative=False) -> list:
+    def get_dates(self, relative=False) -> pd.Series:
         """
         Returns a list of unique dates
+
+        :param relative: Count days from zero (first day) instead of returning date list
         """
         unique_dates = self.__data__.groupby('id').startDate.unique()
 
+        # If relative to first date of logging, subtract first date and convert days to int
         if relative:
-            unique_dates = unique_dates - self.__data__.groupby('id').startDate.min()
+            def baseline(dates):
+                return [(date - min(dates)).astype('timedelta64[D]').astype((int)) for date in dates]
 
-            for idx in range(len(unique_dates)):
-                unique_dates.iloc[idx] = [delta.days for delta in unique_dates.iloc[idx]]
+            unique_dates = unique_dates.apply(baseline)
 
         return unique_dates
 
@@ -414,7 +408,7 @@ class Appevents:
     ####################
 
     def get_daily_events(self, category=None, application=None, from_push=None, day_types=None,
-                         time_of_day=None) -> pd.Series:
+                         time_of_day=None, series_unit=None) -> pd.Series:
         """
         Returns number of appevents per day
         """
@@ -430,11 +424,15 @@ class Appevents:
         data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types,
                            time_of_day=time_of_day)
 
-        return data.groupby(['id', 'startDate']).application.count().reset_index(). \
-            groupby('id').application.mean().rename(name)
+        # Final grouping occurs here
+        groupby_list = ['id', series_unit] if series_unit else ['id']
+
+        return data.groupby(((groupby_list + [
+            'startDate']) if not 'startDate' in groupby_list else groupby_list)).application.count().reset_index(). \
+            groupby(groupby_list).application.mean().rename(name)
 
     def get_daily_duration(self, category=None, application=None, from_push=None, day_types=None,
-                           time_of_day=None) -> pd.Series:
+                           time_of_day=None, series_unit=None) -> pd.Series:
         """
         Returns duration per day
         """
@@ -450,10 +448,14 @@ class Appevents:
         data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types,
                            time_of_day=time_of_day)
 
-        return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
-            groupby('id').duration.mean().rename(name)
+        # Final grouping occurs here
+        groupby_list = ['id', series_unit] if series_unit else ['id']
 
-    def get_daily_active_sessions(self) -> pd.Series:
+        return data.groupby(((groupby_list + [
+            'startDate']) if not 'startDate' in groupby_list else groupby_list)).duration.sum().reset_index(). \
+            groupby(groupby_list).duration.mean().rename(name)
+
+    def get_daily_active_sessions(self, series_unit=None) -> pd.Series:
         """
         Returns daily number of sessions based on appevent activity
         """
@@ -462,20 +464,15 @@ class Appevents:
 
         data = self.__data__
 
-        return data.groupby(['id', 'startDate']).session.count().reset_index(). \
-            groupby('id').session.mean().rename(name)
+        # Final grouping occurs here
+        groupby_list = ['id', series_unit] if series_unit else ['id']
 
-    def get_daily_number_of_apps(self) -> pd.Series:
-
-        name = 'daily_number_of_apps'
-
-        data = self.__data__
-
-        return data.groupby(['id', 'startDate']).application.count().reset_index(). \
-            groupby('id').application.mean().rename(name)
+        return data.groupby(((groupby_list + [
+            'startDate']) if not 'startDate' in groupby_list else groupby_list)).session.count().reset_index(). \
+            groupby(groupby_list).session.mean().rename(name)
 
     def get_daily_events_sd(self, category=None, application=None, from_push=None, day_types=None,
-                            time_of_day=None) -> pd.Series:
+                            time_of_day=None, series_unit=None) -> pd.Series:
         """
         Returns standard deviation on number of events per day
         """
@@ -491,11 +488,15 @@ class Appevents:
         data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types,
                            time_of_day=time_of_day)
 
-        return data.groupby(['id', 'startDate']).application.count().reset_index(). \
-            groupby('id').application.std().rename(name)
+        # Final grouping occurs here
+        groupby_list = ['id', series_unit] if series_unit else ['id']
+
+        return data.groupby(((groupby_list + [
+            'startDate']) if not 'startDate' in groupby_list else groupby_list)).application.count().reset_index(). \
+            groupby(groupby_list).application.std().rename(name)
 
     def get_daily_duration_sd(self, category=None, application=None, from_push=None, day_types=None,
-                              time_of_day=None) -> pd.Series:
+                              time_of_day=None, series_unit=None) -> pd.Series:
         """
         Returns standard deviation on duration per days
         """
@@ -507,14 +508,17 @@ class Appevents:
                 (f'_{day_types}' if day_types else '') +
                 (f'_{time_of_day}' if time_of_day else '')).lower()
 
-        # Filter __data__ on request
+        # Filter data on request
         data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types,
                            time_of_day=time_of_day)
+        # Final grouping occurs here
+        groupby_list = ['id', series_unit] if series_unit else ['id']
 
-        return data.groupby(['id', 'startDate']).duration.sum().reset_index(). \
-            groupby('id').duration.std().rename(name)
+        return data.groupby(((groupby_list + [
+            'startDate']) if not 'startDate' in groupby_list else groupby_list)).duration.sum().reset_index(). \
+            groupby(groupby_list).duration.std().rename(name)
 
-    def get_daily_active_sessions_sd(self) -> pd.Series:
+    def get_daily_active_sessions_sd(self, series_unit=None) -> pd.Series:
         """
         Returns standard deviation on daily number of sessions based on appevent activity
         """
@@ -523,36 +527,58 @@ class Appevents:
 
         data = self.__data__
 
-        return data.groupby(['id', 'startDate']).session.count().reset_index(). \
-            groupby('id').session.std().rename(name)
+        # Final grouping occurs here
+        groupby_list = ['id', series_unit] if series_unit else ['id']
 
-    def get_daily_number_of_apps_sd(self) -> pd.Series:
+        return data.groupby(((groupby_list + [
+            'startDate']) if not 'startDate' in groupby_list else groupby_list)).session.count().reset_index(). \
+            groupby(groupby_list).session.std().rename(name)
+
+    def get_daily_number_of_apps(self, series_unit=None) -> pd.Series:
+
+        name = 'daily_number_of_apps'
+
+        data = self.__data__
+
+        # Final grouping occurs here
+        groupby_list = ['id', series_unit] if series_unit else ['id']
+
+        return data.groupby(groupby_list + ['startDate']).application.count().reset_index(). \
+            groupby(groupby_list).application.mean().rename(name)
+
+    def get_daily_number_of_apps_sd(self, series_unit=None) -> pd.Series:
 
         name = 'daily_number_of_apps_sd'
 
         data = self.__data__
 
-        return data.groupby(['id', 'startDate']).application.count().reset_index(). \
-            groupby('id').application.std().rename(name)
+        groupby_list = ['id', series_unit] if series_unit else ['id']
 
-    def get_sessions_starting_with(self, category=None, application=None, normalize=False):
+        return data.groupby(((groupby_list + [
+            'startDate']) if not 'startDate' in groupby_list else groupby_list)).application.count().reset_index(). \
+            groupby(groupby_list).application.std().rename(name)
+
+    def get_sessions_starting_with(self, category=None, application=None, normalize=False, series_unit=None):
 
         # Field name
         name = ('sessions_starting_with' +
                 (f'_{category}' if category else '') +
                 (f'_{application}' if application else '')).lower()
 
+        # Final grouping occurs here
+        groupby_list = ['id', series_unit] if series_unit else ['id']
+
         if category:
             categories = [category] if not isinstance(category, list) else category
 
-            return (self.__data__.groupby(['id', 'session']).category.first().isin(categories)). \
-                groupby('id').value_counts(normalize=normalize).rename(name)
+            return (self.__data__.groupby(groupby_list + ['session']).category.first().isin(categories)). \
+                groupby(groupby_list).value_counts(normalize=normalize).rename(name)
 
         if application:
             applications = [application] if not isinstance(application, list) else application
 
-            return (self.__data__.groupby(['id', 'session']).application.first().isin(applications)). \
-                groupby('id').value_counts(normalize=normalize).rename(name)
+            return (self.__data__.groupby(groupby_list + ['session']).application.first().isin(applications)). \
+                groupby(groupby_list).value_counts(normalize=normalize).rename(name)
 
 
 if __name__ == "__main__":
@@ -561,16 +587,26 @@ if __name__ == "__main__":
     ###########
 
     hlp.hi()
-    hlp.set_param(log_level=3)
+    hlp.set_param(log_level=3, data_dir='../../data/')
 
-    # Read sample data
-    data = hlp.add_dates(
-        pd.read_parquet(
-            path='../../data/glance/processed_appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet'),
-        'appevents')
+    # Read data, build Appevents object, subsample
+    '''data = hlp.load(path=join(hlp.DATA_DIR,'100_ids_appevents.csv'),index='appevents')
+
+    # Create appevents object
+    ae=Appevents(data=data, add_categories=True)
+
+    # Get first 5 ids
+    ids = ae.get_users()[:5]
+    ae.filter(users=ids,inplace=True)
+
+    # Save as pickle
+    ae.to_pickle(join(hlp.DATA_DIR, 'mini_ae.npy'))'''
+
+    # Reload pickle
+    ae = Appevents.from_pickle(join(hlp.DATA_DIR, 'mini_ae.npy'))
 
     # Data path
-    data_path = '../../data/glance/appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet'
+    '''data_path = '../../data/glance/appevents/0a0fe3ed-d788-4427-8820-8b7b696a6033_appevents.parquet'
 
     # More sample data
     data2 = pd.read_parquet(path='../../data/glance/appevents/0a9edba1-14e3-466a-8d0c-f8a8170cefc8_appevents.parquet')
@@ -593,4 +629,4 @@ if __name__ == "__main__":
 
     ae.save_data(dir='../../data/glance/processed_appevents', name='test')
 
-    ae5 = Appevents.from_pickle('../../data/glance/meta/ae2.ae')
+    ae5 = Appevents.from_pickle('../../data/glance/meta/ae2.ae')'''

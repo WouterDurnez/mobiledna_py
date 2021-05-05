@@ -16,12 +16,11 @@ ELASTICSEARCH FUNCTIONS
 import base64
 import csv
 import os
+import pandas as pd
 import random as rnd
 import sys
-from pprint import PrettyPrinter
-
-import pandas as pd
 from elasticsearch import Elasticsearch
+from pprint import PrettyPrinter
 
 import mobiledna.communication.config as cfg
 import mobiledna.core.help as hlp

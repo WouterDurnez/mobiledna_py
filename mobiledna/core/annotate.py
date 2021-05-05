@@ -14,15 +14,15 @@ ANNOTATION FUNCTIONS
 """
 
 import datetime as dt
-import random as rnd
-from collections import Counter
-from os import listdir
-from os.path import join, pardir
-
 import holidays
 import numpy as np
 import pandas as pd
+import random as rnd
 from bs4 import BeautifulSoup
+from collections import Counter
+from os import listdir
+from os import makedirs
+from os.path import join, pardir
 from requests import get
 from tqdm import tqdm
 
@@ -56,9 +56,7 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
     cached_apps = 0
 
     # Loop over app names
-    t_app_names = app_names if hlp.LOG_LEVEL > 1 else tqdm(app_names, position=0, leave=True)
-    if hlp.LOG_LEVEL == 1:
-        t_app_names.set_description('Scraping')
+    t_app_names = app_names if hlp.LOG_LEVEL > 1 else tqdm(app_names, desc="Scraping", position=0, leave=True)
     for app_name in t_app_names:
 
         # Check with local cache, which must be a dict
@@ -152,7 +150,8 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
             known_apps = {**cache, **known_apps}
 
     # Store app meta data cache
-    np.save(file=join(pardir, pardir, 'cache', 'app_meta.npy'), arr=known_apps)
+    hlp.set_dir(hlp.CACHE_DIR)
+    np.save(file=join(hlp.CACHE_DIR, 'app_meta.npy'), arr=known_apps)
 
     return known_apps, unknown_apps
 
@@ -198,6 +197,64 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFram
 
     tqdm.pandas(desc="Adding category", position=0, leave=True)
     df['category'] = df.application.progress_apply(adding_category_row)
+
+    return df
+
+
+#############
+# App names #
+#############
+
+def add_appname(df: pd.DataFrame, scrape=False, overwrite=False, alias: bool = False) -> pd.DataFrame:
+    """
+    Take a data frame and annotate rows with name field, based on application name.
+
+    :param df: data frame (appevents or notifications)
+    :param scrape: scrape Play Store for new info (set to True if no meta data is found)
+    :param alias: use app alias (True) or PlayStore name (False)
+    :return: Annotated data frame
+    """
+
+    # Load app meta data (with alias)
+    try:
+        meta = dict(np.load(join(hlp.CACHE_DIR, 'app_meta_alias.npy'), allow_pickle=True).item())
+    except Exception as e:
+        log('No app meta data found. Scraping Play store.', lvl=1)
+        scrape = True
+        meta = {}
+
+    # Check if data frame has an application field
+    if 'application' not in df:
+        raise Exception('Cannot find <application> column in data frame!')
+
+    # Scape the Play store if requested
+    if scrape:
+        applications = list(df.application.unique())
+
+        meta, _ = scrape_play_store(app_names=applications, cache=meta, overwrite=overwrite)
+
+    # Add name field to row
+    def adding_appname_row(app: str):
+        if not alias and app in meta.keys() and meta[app]['name']:
+            try:
+                return meta[app]['name']
+            except:
+                return 'unknown'
+
+        if alias and app in meta.keys():
+            try:
+                if meta[app]['alias']:
+                    return meta[app]['alias']
+            except KeyError:
+                try:
+                    if meta[app]['name']:
+                        return meta[app]['name']
+                except KeyError:
+                    return 'unknown'
+
+    tqdm.pandas(desc=f"Adding appname {'alias' if alias else ''}", position=0, leave=True)
+
+    df['name'] = df.application.progress_apply(adding_appname_row)
 
     return df
 

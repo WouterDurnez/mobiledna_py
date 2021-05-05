@@ -13,12 +13,14 @@ NOTIFICATIONS CLASS
 -- mailto:Wouter.Durnez@UGent.be
 """
 
-from collections import Counter
-
 import pandas as pd
+import pickle
+from collections import Counter
+from tqdm import tqdm
 
 import mobiledna.core.help as hlp
-from mobiledna.core.annotate import add_category
+from mobiledna.core.annotate import add_category, add_time_of_day_annotation, add_date_annotation
+from mobiledna.core.appevents import Appevents
 from mobiledna.core.help import log
 
 pd.set_option('display.max_rows', 500)
@@ -53,51 +55,120 @@ class Notifications:
             self.add_category()
 
     @classmethod
-    def load(cls, path: str, file_type='infer', sep=',', decimal='.'):
+    def load_data(cls, path: str, file_type='infer', sep=',', decimal='.'):
         """
-        Construct Notifications object from path
+        Construct Appevents object from path to data
 
         :param path: path to the file
         :param file_type: file extension (csv, parquet, or pickle)
         :param sep: separator for csv files
         :param decimal: decimal for csv files
-        :return: Notifications object
+        :return: Appevents object
         """
 
-        # Load data frame, depending on file type
-        if file_type == 'infer':
-
-            # Get extension
-            file_type = path.split('.')[-1]
-
-            # Only allow the following extensions
-            if file_type not in ['csv', 'pickle', 'pkl', 'parquet']:
-                raise Exception("ERROR: Could not infer file type!")
-
-            log("Recognized file type as <{type}>.".format(type=file_type), lvl=3)
-
-        # CSV
-        if file_type == 'csv':
-            data = pd.read_csv(filepath_or_buffer=path,
-                               # usecols=,
-                               sep=sep, decimal=decimal,
-                               error_bad_lines=False)
-
-        # Pickle
-        elif file_type == 'pickle' or file_type == 'pkl':
-            data = pd.read_pickle(path=path)
-
-        # Parquet
-        elif file_type == 'parquet':
-            data = pd.read_parquet(path=path, engine='auto')
-
-        # Unknown
-        else:
-            raise Exception("ERROR: You want me to read what now? Invalid file type! ")
+        data = hlp.load(path=path, index='notifications', file_type=file_type, sep=sep, dec=decimal)
 
         return cls(data=data)
 
-    def filter(self, category=None, application=None, priority=None, posted=True):
+    def to_pickle(self, path: str):
+        """
+        Store an Appevents object to pickle
+        :param path: path to file
+        :return: None
+        """
+
+        # Setting directory
+        dir = '/'.join(path.split('/')[:-1])
+        hlp.set_dir(dir)
+
+        # Storing pickle
+        with open(file=path, mode='wb') as file:
+            pickle.dump(self, file, pickle.HIGHEST_PROTOCOL)
+        file.close()
+
+    @classmethod
+    def from_pickle(cls, path: str):
+        """
+        Construct an Appevents object from pickle
+        :param path: path to file
+        :return: Appevents object
+        """
+
+        with open(file=path, mode='rb') as file:
+            object = pickle.load(file)
+        file.close()
+
+        return object
+
+    def save_data(self, dir: str, name: str, csv=False, pickle=False, parquet=True):
+        """
+        Save data from Appevents object to data frame
+        :param dir: directory to save
+        :param name: file name
+        :param csv: csv format
+        :param pickle: pickle format
+        :param parquet: parquet format
+        :return: None
+        """
+
+        hlp.save(df=self.__data__, dir=dir, name=name, csv_file=csv, pickle=pickle, parquet=parquet)
+
+    @hlp.time_it
+    def sync(self, ae: Appevents, inplace=True):
+        """
+        Restrict timestamps to date ranges as they occur in the Appevents index
+        :param ae: Appevents object
+        :param inplace: return new data frame or manipulate object data frame
+        :return: data frame or None, depending on `inplace`
+        """
+
+        # Get dates from Appevents
+        dates = ae.get_dates()
+
+        # First filter on users (some may have dropped out due to our criteria)
+        users = ae.get_users()
+        self.filter(users=users, inplace=True)
+
+        # Get first and last date (per id)
+        firsts = dates.apply(min)
+        lasts = dates.apply(max)
+
+        # Count for logging
+        before = len(self.__data__)
+
+        # Helper function: take df and filter 'time_col' on (start, stop) range
+        def filter_timestamps(df: pd.DataFrame, start: pd.Timestamp, stop: pd.Timestamp,
+                              time_col='time') -> pd.DataFrame:
+
+            # Define filter criterion (edges included)
+            criterion = (start <= df[time_col].dt.date) & (df[time_col].dt.date <= stop)
+
+            # Filter the df and return it
+            df = df.loc[criterion]
+            return df
+
+        # Apply to object
+        tqdm.pandas(desc="Syncing Notifications to Appevents")
+        result = self.__data__.groupby('id').progress_apply(lambda df: filter_timestamps(df,
+                                                                                         start=firsts[df.id.iloc[0]],
+                                                                                         stop=lasts[df.id.iloc[
+                                                                                             0]])).reset_index(
+            drop=True)
+
+        # Count for logging
+        after = len(result)
+
+        log(f'Synced Notifications with Appevents input: went from {before} to'
+            f' {after} lines ({round(100 * (before - after) / before, 2)}% less).')
+
+        if inplace:
+            self.__data__ = result
+        else:
+            return result
+
+    def filter(self, users=None, category=None, application=None, day_types=None, time_of_day=None, priority=None,
+               posted=None,
+               inplace=False):
 
         # If we want category-specific info, make sure we have category column
         if category:
@@ -119,15 +190,48 @@ class Notifications:
         else:
             data = self.__data__
 
-        # Filter on whether notification was posted
-        if posted:
-            data = data.loc[data.posted == posted]
+        # If we want specific users
+        if users:
+            users = [users] if not (isinstance(users, list) or isinstance(users, set)) else users
+            data = data.loc[data.id.isin(users)]
 
-        # Filter on priority
+        # If we want specific day types (week, weekend)
+        if day_types:
+            day_types = [day_types] if not isinstance(day_types, list) else day_types
+
+            if 'startDOTW' not in self.__data__.columns:
+                self.add_date_type()
+
+            # ... and filter
+            data = data.loc[data.startDOTW.isin(day_types)]
+
+        # If we want specific times fo day (morning, noon, etc.)
+        if time_of_day:
+            time_of_day = [time_of_day] if not isinstance(time_of_day, list) else time_of_day
+
+            if 'startTOD' not in self.__data__.columns:
+                self.add_time_of_day()
+
+            # ... and filter
+            data = data.loc[data.startTOD.isin(time_of_day)]
+
+        # If we want to filter on priority levels
         if priority:
-            data = data.loc[data.priority >= priority]
+            priority = [priority] if not isinstance(priority, list) else priority
 
-        return data
+            # ... filter
+            data = data.loc[data.priority.isin(priority)]
+
+        # If we want to filter on the posted variable
+        if posted:
+            # ... filter
+            data = data.loc[data.posted.isin(posted)]
+
+        if inplace:
+            self.__data__ = data
+            return self
+        else:
+            return data
 
     def merge(self, *notifications: pd.DataFrame):
         """
@@ -138,12 +242,25 @@ class Notifications:
         """
 
         new_data = pd.concat([self.__data__, *notifications], sort=False)
+        new_data.drop_duplicates(inplace=True)
 
         return Notifications(data=new_data)
 
     def add_category(self, scrape=False, overwrite=False):
 
         self.__data__ = add_category(df=self.__data__, scrape=scrape, overwrite=overwrite)
+
+    def add_date_type(self, date_cols='date', holidays_separate=False):
+
+        self.__data__ = add_date_annotation(df=self.__data__, date_cols=date_cols, holidays_separate=holidays_separate)
+
+        return self
+
+    def add_time_of_day(self, time_col='startTime'):
+
+        self.__data__ = add_time_of_day_annotation(df=self.__data__, time_cols=time_col)
+
+        return self
 
     # Getters #
     ###########
@@ -222,9 +339,13 @@ if __name__ == "__main__":
     ###########
 
     hlp.hi()
-    hlp.set_param(log_level=1)
+    hlp.set_param(log_level=3)
 
-    # Read sample data
-    data = pd.read_csv('../../data/glance/not.csv', sep=';')
+    # data = hlp.load(path='../../data/assume/eryckaert_notifications.csv',
+    #                index='notifications',sep=';')
+    ae = Appevents.load_data(path='../../data/assume/eryckaert_appevents.csv', sep=';')
+    # hlp.format_data(df=data, index='notifications')
 
-    n = Notifications(data)
+    noti = Notifications.load_data(pathdata='../../data/assume/eryckaert_notifications.csv',
+                                   sep=';')
+    noti.sync(ae=ae)

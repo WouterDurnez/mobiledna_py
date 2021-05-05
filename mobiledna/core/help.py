@@ -13,16 +13,16 @@ HELPER FUNCTIONS
 -- mailto:Wouter.Durnez@UGent.be
 """
 
+import numpy as np
 import os
+import pandas as pd
 import random as rnd
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
 from pprint import PrettyPrinter
 from typing import Callable
-
-import numpy as np
-import pandas as pd
 
 pp = PrettyPrinter(indent=4)
 
@@ -312,7 +312,7 @@ def longest_uninterrupted(df: pd.DataFrame, column='startDate') -> pd.DataFrame:
         previous = date
 
     # Print some output
-    log(f"Longest uninterrupted log period for {df.id.iloc[0]}: {len(longest)} days.")
+    log(f"Longest uninterrupted log period for {df.id.iloc[0]}: {len(longest)} days.", lvl=4)
 
     # Filter data frame
     df = df.loc[df[column].isin(longest)]
@@ -324,7 +324,7 @@ def longest_uninterrupted(df: pd.DataFrame, column='startDate') -> pd.DataFrame:
 # Initialization functions #
 ############################
 
-def hi(title=None):
+def hi(title=None, log_level: int = None, data_dir=None, cache_dir: str = None, ):
     """
     Say hello. (It's stupid, I know.)
     If there's anything to initialize, do so here.
@@ -341,8 +341,16 @@ def hi(title=None):
     if title:
         log(title, title=True)
 
+    # Set cache dir
+    if not cache_dir:
+        path = Path(os.path.dirname(os.path.abspath(__file__)))
+        cache_dir = os.path.join(path.parent, 'cache')
+
+    set_param(log_level=log_level, data_dir=data_dir, cache_dir=cache_dir)
+
     print("LOG_LEVEL is set to {}.".format(LOG_LEVEL))
-    print("DATA_DIR is set to {}".format(DATA_DIR))
+    print("DATA_DIR is set to {}".format(os.path.abspath(DATA_DIR)))
+    print("CACHE_DIR is set to {}".format(CACHE_DIR))
     print()
 
     # Set this warning if you intend to keep working on the same data frame,
@@ -467,11 +475,11 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
 
         # Add ID which links with appevents index
         df['sessionID'] = pd.to_numeric(df['startTime'], downcast='unsigned') - 3600
-        print('original', len(df))
+        # print('original', len(df))
 
         # Get indices for valid entries, that have a start and a stop to them
         valids = (df['session on'] == True) & (df['session off'] == False)
-        print('valids', np.sum(valids))
+        # print('valids', np.sum(valids))
 
         # Remove bogus rows
         df = df.loc[df['session on'] == True]
@@ -492,6 +500,9 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
 
         if col.startswith('Unnamed') or col not in INDEX_FIELDS[index]:
             df.drop(labels=[col], axis=1, inplace=True)
+
+    # Drop duplicates
+    df.drop_duplicates(inplace=True)
 
     log("Successfully formatted dataframe.", lvl=3)
 
@@ -530,14 +541,17 @@ def add_duration(df: pd.DataFrame, clear_negatives=True) -> pd.DataFrame:
     # Check if there are any negative durations.
     if not df[df["duration"] < 0].empty:
 
+        # Store proportion of negative durations
+        negative_proportion = round(100 * len(df[df["duration"] < 0]) / len(df), 4)
+
         # Clear negatives if requested
         if clear_negatives:
 
-            log("WARNING: encountered negative duration! Removing from data frame...", lvl=1)
+            log(f"WARNING: encountered negative duration! Removing from data frame... ({negative_proportion}%)", lvl=1)
             df = df.loc[df["duration"] >= 0]
 
         else:
-            log("WARNING: encountered negative duration!", lvl=1)
+            log(f"WARNING: encountered negative duration! ({negative_proportion}%)", lvl=1)
 
     return df
 
@@ -552,7 +566,6 @@ def add_dates(df: pd.DataFrame, index: str) -> pd.DataFrame:
     """
     if index == 'appevents' or index == 'sessions':
 
-        df['startDate'] = pd.to_datetime(df.startTime.dt.date)
         df['startDate'] = pd.to_datetime(df.startTime.dt.date)
         df['endDate'] = pd.to_datetime(df.endTime.dt.date)
 
@@ -639,7 +652,7 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
     if parquet:
 
         try:
-            df.to_parquet(fname=path + ".parquet", engine='auto', compression='snappy')
+            df.to_parquet(path=path + ".parquet", engine='auto', compression='snappy')
             log("Saved data frame to {}".format(path + ".parquet"))
 
         except Exception as e:
@@ -663,7 +676,8 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
 
     # Check if index is valid
     if index not in INDICES:
-        raise Exception("Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', 'connectivity' or 'logs'.")
+        raise Exception(
+            "Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', 'connectivity' or 'logs'.")
 
     # Load data frame, depending on file type
     if file_type == 'infer':
@@ -713,7 +727,101 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
             check_index(df=df, index='sessions', ignore_error=True)):
         add_duration(df)
     """
+
+    # df = format_data(df=df, index=index)
     return df
+
+
+################
+# App metadata #
+################
+
+def load_meta(path=None) -> dict:
+    """
+    Load the app meta data dictionary
+    :param path: if custom path, specify here, otherwise default cache location
+    :return: app meta data dictionary
+    """
+
+    # If not specified, load from standard location
+    if not path:
+        path = os.path.join(CACHE_DIR, 'app_meta.npy')
+
+    app_meta = dict(np.load(file=path, allow_pickle=True).item())
+
+    return app_meta
+
+
+def save_meta(app_meta: dict, dir=None, name='app_meta.npy'):
+    """
+    Save the app meta data dictionary
+    :param app_meta: app meta data dictionary to store
+    :param dir: if custom directory, specify here, otherwise default cache location
+    """
+
+    # If not specified, load from standard location
+    if not dir:
+        dir = CACHE_DIR
+
+    np.save(file=os.path.join(dir, name), arr=app_meta)
+
+
+def edit_meta(app_meta: dict, app_name: str, changes: dict, overwrite=True) -> dict:
+    """
+    Given an app meta data dictionary, make changes to a specific entry
+    :param app_meta: the app meta data
+    :param app_name: entry for which to make changes
+    :param changes: dictionary with fields, which may already be present
+    :param overwrite: whether to overwrite existing fields
+    :return: adjusted dict
+    """
+    app_meta = app_meta.copy()
+
+    if overwrite:
+        app_meta[app_name] = app_meta[app_name] | changes
+    else:
+        app_meta[app_name] = changes | app_meta[app_name]
+
+    return app_meta
+
+
+def update_app_meta_keys(meta: dict) -> dict:
+    """
+    Updates app meta to change "fancyname" key into "name" key.
+
+    :param meta: app meta dict
+    :return: updated app meta dict
+    """
+    meta = meta.copy()
+
+    try:
+        for k, v in meta.items():
+            try:
+                v["name"] = v.pop("fancyname")
+            except KeyError:
+                pass
+    except:
+        pass
+
+    return meta
+
+
+def add_alias_to_meta(app_meta: dict, alias_dict: dict) -> dict:
+    """
+    Based on the cached app_meta and a provided dict with {alias: list_of_apps,},
+    adds an alias key to the app_meta dictionary.
+
+    :param app_meta: app_meta dictionary
+    :param alias_dict: app alias dictionary with alias (key) and list of app (value)
+    :return: app_meta dictionary with added alias key where provided
+    """
+    app_meta = app_meta.copy()
+
+    for alias in alias_dict:
+        for app in alias_dict[alias]:
+            if app in app_meta:
+                app_meta[app]["alias"] = alias
+    return app_meta
 
 
 ########
@@ -723,6 +831,21 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
 if __name__ in ['__main__', 'builtins']:
     # Howdy
     hi()
+
+    # Load meta data
+    meta = load_meta()
+
+    # We'll change this entry
+    name = 'com.facebook.orca'
+
+    # These are the fields we want to add/change
+    changes = {'our_name': 'facebook', 'fancyname': 'messengerrrrr'}
+
+    # We can either impose our changes ...
+    meta_new = edit_meta(meta, name, changes)
+
+    # ... or be careful not to overwrite existing fields
+    meta_new2 = edit_meta(meta, name, changes, overwrite=False)
 
     ts = '2019-11-04 21:43:16.139000'
     # start = pd.to_numeric(pd.to_datetime(df.startTime).astype(int) / 10 ** 9, downcast='unsigned')
