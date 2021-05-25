@@ -13,9 +13,10 @@ NOTIFICATIONS CLASS
 -- mailto:Wouter.Durnez@UGent.be
 """
 
-import pandas as pd
 import pickle
 from collections import Counter
+
+import pandas as pd
 from tqdm import tqdm
 
 import mobiledna.core.help as hlp
@@ -225,7 +226,7 @@ class Notifications:
         # If we want to filter on the posted variable
         if posted:
             # ... filter
-            data = data.loc[data.posted.isin(posted)]
+            data = data.loc[data.posted == posted]
 
         if inplace:
             self.__data__ = data

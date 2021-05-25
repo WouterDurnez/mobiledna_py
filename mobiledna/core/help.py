@@ -13,9 +13,7 @@ HELPER FUNCTIONS
 -- mailto:Wouter.Durnez@UGent.be
 """
 
-import numpy as np
 import os
-import pandas as pd
 import random as rnd
 import sys
 import time
@@ -23,6 +21,10 @@ from datetime import datetime
 from pathlib import Path
 from pprint import PrettyPrinter
 from typing import Callable
+
+import numpy as np
+import pandas as pd
+from termcolor import colored
 
 pp = PrettyPrinter(indent=4)
 
@@ -330,13 +332,14 @@ def hi(title=None, log_level: int = None, data_dir=None, cache_dir: str = None, 
     If there's anything to initialize, do so here.
     """
 
-    print("\n")
-    print("    __  ___      __    _ __     ____  _   _____ ")
-    print("   /  |/  /___  / /_  (_) /__  / __ \/ | / /   |")
-    print("  / /|_/ / __ \/ __ \/ / / _ \/ / / /  |/ / /| |")
-    print(" / /  / / /_/ / /_/ / / /  __/ /_/ / /|  / ___ |")
-    print("/_/  /_/\____/_.___/_/_/\___/_____/_/ |_/_/  |_|")
-    print("")
+    print()
+    print(colored("                   _     _ _     ______ _   _   ___", 'blue'))
+    print(colored("                  | |   (_) |    |  _  \ \ | | / _ \ ", 'blue'))
+    print(colored("   _ __ ___   ___ | |__  _| | ___| | | |  \| |/ /_\\ \\", 'blue'))
+    print(colored("  | '_ ` _ \ / _ \| '_ \| | |/ _ \ | | | . ` ||  _  |", 'blue'))
+    print(colored("  | | | | | | (_) | |_) | | |  __/ |/ /| |\  || | | |", 'blue'))
+    print(colored("  |_| |_| |_|\___/|_.__/|_|_|\___|___/ \_| \_/\_| |_/", 'blue'))
+    print()
 
     if title:
         log(title, title=True)
@@ -348,9 +351,9 @@ def hi(title=None, log_level: int = None, data_dir=None, cache_dir: str = None, 
 
     set_param(log_level=log_level, data_dir=data_dir, cache_dir=cache_dir)
 
-    print("LOG_LEVEL is set to {}.".format(LOG_LEVEL))
-    print("DATA_DIR is set to {}".format(os.path.abspath(DATA_DIR)))
-    print("CACHE_DIR is set to {}".format(CACHE_DIR))
+    print("LOG_LEVEL is set to {}.".format(colored(LOG_LEVEL, 'red')))
+    print("DATA_DIR is set to {}".format(colored(os.path.abspath(DATA_DIR), 'red')))
+    print("CACHE_DIR is set to {}".format(colored(CACHE_DIR, 'red')))
     print()
 
     # Set this warning if you intend to keep working on the same data frame,
