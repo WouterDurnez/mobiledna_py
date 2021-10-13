@@ -9,6 +9,10 @@
 
 # Data folder.
 /data/
+/mobiledna/data/
+
+# Builds
+/build/
 
 # Test folder.
 /mobiledna/test/
