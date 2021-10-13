@@ -259,16 +259,20 @@ class Sessions:
     # Compound getters #
     ####################
 
-    def get_daily_sessions(self) -> pd.Series:
+    def get_daily_sessions(self, avg=False) -> pd.Series:
         """
-        Returns number of sessions per day
+        Returns average number of sessions per day
         """
 
         # Field name
-        name = 'daily_sessions'
+        name = 'avg_daily_sessions'
 
-        return self.__data__.groupby(['id', 'startDate'])['startTime'].count().reset_index(). \
-            groupby('id')['startTime'].mean().rename(name)
+        if avg:
+            return self.__data__.groupby(['id', 'startDate'])['startTime'].count().reset_index(). \
+                    groupby('id')['startTime'].mean().rename(name)
+        else:
+            return self.__data__.groupby(['id', 'startDate'])['startTime'].count().rename(name)
+
 
     def get_daily_durations(self) -> pd.Series:
         """
