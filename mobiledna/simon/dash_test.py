@@ -12,28 +12,29 @@ from mobiledna.core.appevents import Appevents
 app = Dash(__name__)
 
 # -- Import and clean data (importing csv into pandas)
-ae = Appevents.load_data('data.csv', sep=';').add_category()
+ae = Appevents.load_data('data_qa.csv', sep=';')
 df = ae.__data__
 
-category = df.category.unique()
+ids = df.id.unique()
 
 # ------------------------------------------------------------------------------
 # App layout
 app.layout = html.Div([
 
-    html.H1("Daily phone usage for a chosen category", style={'text-align': 'center'}),
+    html.H1("Screen time distribution per category", style={'text-align': 'center'}),
 
-    dcc.Dropdown(id="slct_year",
-                 options=[{"label": x, "value":x} for x in category],
+    dcc.Dropdown(id="slct_id",
+                 options=[{"label": x, "value": x} for x in ids],
                  multi=False,
-                 value='chat',
+                 value=ids[0],
                  style={'width': "40%"}
                  ),
     html.Div(),
     html.Div(id='output_container', children=[]),
     html.Br(),
+    dcc.Graph(id='my_mobileDNA_map', figure={}),
 
-    dcc.Graph(id='my_mobileDNA_map', figure={})
+    html.H1("", style={'text-align': 'center'}),
 
 ])
 
@@ -43,35 +44,32 @@ app.layout = html.Div([
 @app.callback(
     [Output(component_id='output_container', component_property='children'),
      Output(component_id='my_mobileDNA_map', component_property='figure')],
-    [Input(component_id='slct_year', component_property='value')]
+    [Input(component_id='slct_id', component_property='value')]
 )
 def update_graph(option_slctd):
     print(option_slctd)
     print(type(option_slctd))
 
-    container = "{} usage for user with id {}: ".format(option_slctd, '5e37a125-d7e6-49a1-9f62-b3657f08cdff')
+    container = "usage for user with id: {}".format(option_slctd)
 
     dff = df.copy()
     dff['duration'] = (dff['duration'] / 60)
-    dff = dff[dff["category"] == option_slctd]
-    dff = dff[dff["id"] == '5e37a125-d7e6-49a1-9f62-b3657f08cdff']
+    dff = dff[dff["id"] == option_slctd]
 
-    dff = dff.groupby(['startDate','category'])['duration'].agg(duration='sum')
+    dff = dff.groupby(['category'])['duration'].agg(duration='sum')
     dff.reset_index(inplace=True)
     print(dff.head())
 
 
     # Plotly Express
-    fig = px.bar(
+    fig = px.pie(
         data_frame=dff,
-        x='startDate',
-        y='duration',
-        color='duration',
-        color_continuous_scale='greens',
-        #hover_data=['State', 'Pct of Colonies Impacted'],
-        labels={'duration': 'duration (min)', 'startDate':'date'},
+        values='duration',
+        names='category',
+        title='screen time per category'
         #template='plotly_dark'
     )
+    fig.update_traces(textposition='inside', textinfo='percent+label')
 
     # Plotly Graph Objects (GO)
     # fig = go.Figure(
