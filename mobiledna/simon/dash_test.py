@@ -26,30 +26,28 @@ app.layout = html.Div(children=[
     html.Div([
 
         html.H1("Screen time distribution per category", style={'text-align': 'center'}),
-
+        html.Div([
         dcc.Dropdown(id="slct_id",
                      options=[{"label": x, "value": x} for x in ids],
                      multi=False,
                      value=ids[0],
-                     style={'width': "40%"}
+                     style={'text-align': 'center', 'width': "49%", 'display':'inline-block'},
                      ),
-        html.Div(),
-        html.Div(id='output_container', children=[]),
-
-        html.Br(),
 
         dcc.Dropdown(id="slct_id_2",
                      options=[{"label": x, "value": x} for x in ids],
                      multi=False,
                      value=ids[0],
-                     style={'width': "40%"}
+                     style={'text-align': 'center', 'width': "49%", 'display':'inline-block'},
                      ),
+        ]),
+
+        html.Div(id='output_container', children=[], style={'text-align': 'center', 'width': "49%", 'display': 'inline-block'}),
+        html.Div(id='output_container_3', children=[], style={'text-align': 'center', 'width': "49%", 'display': 'inline-block'}),
+
         html.Div(),
-
-
-        html.Div(id='output_container_3', children=[]),
-        dcc.Graph(id='my_mobileDNA_map', figure={}, style={'display': 'inline-block'}),
-        dcc.Graph(id='my_mobileDNA_map_3', figure={}, style={'display': 'inline-block'}),
+        dcc.Graph(id='my_mobileDNA_map', figure={}, style={'width': "49%", 'display': 'inline-block'}),
+        dcc.Graph(id='my_mobileDNA_map_3', figure={}, style={'width': "49%", 'display': 'inline-block'}),
         ]),
 
     html.Div([
@@ -73,9 +71,8 @@ app.layout = html.Div(children=[
 
         html.H1("Location of app use", style={'text-align': 'center'}),
 
-        dcc.Dropdown(id="slct_tod",
+        dcc.RadioItems(id="slct_tod",
                      options=[{"label": x, "value": x} for x in tods],
-                     multi=False,
                      value=tods[0],
                      style={'width': "40%"}
                      ),
@@ -200,7 +197,7 @@ def update_graph(option_slctd):
     #dff = dff.groupby(['startDate', 'category'])['duration'].agg(duration='sum')
     #dff.reset_index(inplace=True)
 
-    container = "locations of usage in {}".format(option_slctd)
+    container = ""
 
     # Plotly Express
     fig = px.scatter_mapbox(
@@ -213,7 +210,7 @@ def update_graph(option_slctd):
     )
 
     fig.update_layout(
-        margin=dict(l=500, r=500, t=20, b=20),
+        margin=dict(l=300, r=300, t=20, b=20),
         hovermode='closest',
         mapbox=dict(
             bearing=0,
