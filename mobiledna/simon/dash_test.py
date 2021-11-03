@@ -15,8 +15,10 @@ app = Dash(__name__)
 ae = Appevents.load_data('data_qa.csv', sep=';')
 df = ae.__data__
 
+
 ids = df.id.unique()
 categories = df.category.unique()
+tods = df.startTOD.unique()
 
 # ------------------------------------------------------------------------------
 # App layout
@@ -57,7 +59,7 @@ app.layout = html.Div(children=[
         dcc.Dropdown(id="slct_category",
                      options=[{"label": x, "value": x} for x in categories],
                      multi=False,
-                     value=categories[2],
+                     value=categories[1],
                      style={'width': "40%"}
                      ),
         html.Div(),
@@ -66,6 +68,27 @@ app.layout = html.Div(children=[
         dcc.Graph(id='my_mobileDNA_map_2', figure={}),
 
     ]),
+
+    html.Div([
+
+        html.H1("Location of app use", style={'text-align': 'center'}),
+
+        dcc.Dropdown(id="slct_tod",
+                     options=[{"label": x, "value": x} for x in tods],
+                     multi=False,
+                     value=tods[0],
+                     style={'width': "40%"}
+                     ),
+
+        html.Div(),
+        html.Div(id='output_container_4', children=[]),
+        html.Div(),
+        html.Br(),
+        dcc.Graph(id='my_mobileDNA_map_4', figure={}),
+        html.Br(),
+        html.Br()
+
+    ])
 
 ])
 
@@ -89,7 +112,6 @@ def update_graph(option_slctd):
 
     dff = dff.groupby(['category'])['duration'].agg(duration='sum')
     dff.reset_index(inplace=True)
-    print(dff.head())
 
 
     # Plotly Express
@@ -160,6 +182,48 @@ def update_graph(option_slctd):
         # hover_data=['State', 'Pct of Colonies Impacted'],
         labels={'duration': 'duration (min)', 'startDate': 'date'},
         #template='plotly_dark'
+    )
+
+    return container, fig
+
+
+@app.callback(
+    [Output(component_id='output_container_4', component_property='children'),
+     Output(component_id='my_mobileDNA_map_4', component_property='figure')],
+    [Input(component_id='slct_tod', component_property='value')]
+)
+
+def update_graph(option_slctd):
+    dff = df.copy()
+    dff = dff[dff["startTOD"] == option_slctd]
+
+    #dff = dff.groupby(['startDate', 'category'])['duration'].agg(duration='sum')
+    #dff.reset_index(inplace=True)
+
+    container = "locations of usage in {}".format(option_slctd)
+
+    # Plotly Express
+    fig = px.scatter_mapbox(
+        dff,
+        lat='latitude',
+        lon='longitude',
+        zoom=5,
+        mapbox_style='carto-positron'  # styles: carto-darkmatter, carto-positron, open-street-map, stamen-terrain, stamen-toner, stamen-watercolor, white-bg
+        #template='plotly_dark'
+    )
+
+    fig.update_layout(
+        margin=dict(l=500, r=500, t=20, b=20),
+        hovermode='closest',
+        mapbox=dict(
+            bearing=0,
+            center=go.layout.mapbox.Center(
+                lat=50.72,
+                lon=4.43
+            ),
+            pitch=0,
+            zoom=6
+        )
     )
 
     return container, fig
