@@ -6,13 +6,21 @@ import plotly.graph_objects as go
 from dash import Dash, dcc, html, Input, Output  # pip install dash (version 2.0.0 or higher)
 
 from mobiledna.core.appevents import Appevents
-
+from datetime import date
 
 app = Dash(__name__)
+
+# mapbox toke
+mapbox_access_token = "pk.eyJ1Ijoic3Blcm5lZWwiLCJhIjoiY2t2dGtlNWQ5MjRmMzJ3cWhhaWpzN2w5cyJ9.DakJIN8BzZ-JxaQpS1cVkA"
 
 # -- Import and clean data (importing csv into pandas)
 ae = Appevents.load_data('data_qa.csv', sep=';')
 df = ae.__data__
+pd.set_option('display.max_columns', None)
+df['duration'] = df['duration'] / 60
+print(df.head())
+
+
 
 # -- Options for dropdown list
 ids = df.id.unique()
@@ -81,11 +89,25 @@ app.layout = html.Div(children=[
 
         html.H1("Location of app use", style={'text-align': 'center'}),
 
-        dcc.RadioItems(id="slct_tod",
-                     options=[{"label": x, "value": x} for x in tods],
-                     value=tods[0],
-                     style={'width': "100%", 'text-align':'center'}
-                     ),
+        dcc.DatePickerRange(
+            id='my-date-picker-range',
+            start_date=date(2021,6,1),
+            end_date=date(2021,10,28),
+            display_format='DD/MM/YYYY',
+            start_date_placeholder_text='Pick a date',
+            style={'text-align':'center'},
+        ),
+
+        html.Br(),
+
+        dcc.Dropdown(
+            id="slct_tod",
+            options=[{"label": x, "value": x} for x in tods],
+            multi=False,
+            placeholder="Set a time of the day",
+            value=tods[0],
+            style={'width': "40%"}
+        ),
 
         html.Div(),
         html.Div(id='output_container_4', children=[]),
@@ -95,6 +117,10 @@ app.layout = html.Div(children=[
         html.Br(),
         html.Br()
 
+    ]),
+
+    html.Div([
+        html.Br(), html.Br(), html.Br(), html.Br(), html.Br(), html.Br()
     ])
 
 ])
@@ -111,10 +137,9 @@ def update_graph(option_slctd):
     print(option_slctd)
     print(type(option_slctd))
 
-    container = "usage for user with id: {}".format(option_slctd)
+    container = ""
 
     dff = df.copy()
-    dff['duration'] = (dff['duration'] / 60)
     dff = dff[dff["id"] == option_slctd]
 
     dff = dff.groupby(['category'])['duration'].agg(duration='sum')
@@ -130,6 +155,7 @@ def update_graph(option_slctd):
         template='seaborn',
     )
     fig.update_traces(textposition='inside', textinfo='percent+label')
+    fig.update_layout(title_text=f'usage for user with id: {option_slctd}', title_x=0.5)
 
     return container, fig
 
@@ -140,10 +166,8 @@ def update_graph(option_slctd):
 )
 def update_graph(option_slctd):
 
-    container = "usage for user with id: {}".format(option_slctd)
-
+    container = ""
     dff = df.copy()
-    dff['duration'] = (dff['duration'] / 60)
     dff = dff[dff["id"] == option_slctd]
 
     dff = dff.groupby(['category'])['duration'].agg(duration='sum')
@@ -159,6 +183,7 @@ def update_graph(option_slctd):
         color_discrete_sequence=px.colors.sequential.Blues,
     )
     fig.update_traces(textposition='inside', textinfo='percent+label')
+    fig.update_layout(title_text=f'usage for user with id: {option_slctd}', title_x=0.5)
 
     return container, fig
 
@@ -174,7 +199,6 @@ def update_graph(selected_id, selected_cat):
     container = "screentime in '{}' category for user with id: {}".format(selected_cat, selected_id)
 
     dff = df.copy()
-    dff['duration'] = (dff['duration'] / 60)
     dff = dff[dff["id"] == selected_id]
     dff = dff[dff["category"] == selected_cat]
 
@@ -198,22 +222,31 @@ def update_graph(selected_id, selected_cat):
 @app.callback(
     [Output(component_id='output_container_4', component_property='children'),
      Output(component_id='my_mobileDNA_map_4', component_property='figure')],
-    [Input(component_id='slct_tod', component_property='value')]
+    [Input(component_id='slct_tod', component_property='value'),
+     Input('my-date-picker-range', 'start_date'),
+     Input('my-date-picker-range', 'end_date')]
 )
 
-def update_graph(option_slctd):
+def update_graph(option_slctd, start_date, end_date):
     dff = df.copy()
+    print(start_date)
     dff = dff[dff["startTOD"] == option_slctd]
+    dff = dff[dff["startDate"] >= start_date]
+    dff = dff[dff["endDate"] <= end_date]
+    print(dff.head())
+
 
     container = ""
 
     # Plotly Express
-    fig = px.scatter_mapbox(
+    fig = px.density_mapbox(
         dff,
         lat='latitude',
         lon='longitude',
+        z='duration',
         zoom=5,
-        mapbox_style='carto-positron',  # styles: carto-darkmatter, carto-positron, open-street-map, stamen-terrain, stamen-toner, stamen-watercolor, white-bg
+        radius=10,
+        mapbox_style='light',  # styles: carto-darkmatter, carto-positron, open-street-map, stamen-terrain, stamen-toner, stamen-watercolor, white-bg
         template='seaborn',
         hover_data=['id'],
     )
@@ -222,6 +255,7 @@ def update_graph(option_slctd):
         margin=dict(l=300, r=300, t=20, b=20),
         hovermode='closest',
         mapbox=dict(
+            accesstoken=mapbox_access_token,
             bearing=0,
             center=go.layout.mapbox.Center(
                 lat=50.72,
