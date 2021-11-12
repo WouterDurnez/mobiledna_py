@@ -30,8 +30,6 @@ category_map = {"medical": "Health","chat": "Social","email": "Productivity","sy
 
 df['category'] = df['category'].apply(lambda x: category_map.get(x,x))
 df['duration'] = df['duration'] / 60
-print(df.head())
-
 
 
 # -- Options for dropdown list
@@ -43,9 +41,27 @@ years = df.startDate.dt.year.unique()
 # ------------------------------------------------------------------------------
 # App layout
 app.layout = html.Div(children=[
+
+    html.Div([
+        html.Header(children=[
+        html.Img(
+            src='assets/mobiledna2.png',
+            style={
+            'height': '10%',
+            'width': '10%',
+            'margin-top': 0,
+            'margin-bottom': 0,
+            'margin-left': 0,
+            'margin_right': 0
+            }
+        )
+        ])
+    ]),
+
     html.Div([
 
-        html.H1("Screen time distribution per category", style={'text-align': 'center'}),
+        html.H1("Screen time distribution per category 📱", style={'text-align': 'center', 'width': "49%", 'display':'inline-block'}),
+        html.H1("Time of day of mobile usage 🕑", style={'text-align': 'center', 'width': "49%", 'display':'inline-block'}),
 
         html.Div([
         dcc.Dropdown(id="slct_id",
@@ -53,7 +69,7 @@ app.layout = html.Div(children=[
                      placeholder="Select an id",
                      multi=False,
                      value=ids[0],
-                     style={'width': "49%", 'display':'inline-block'},
+                     style={'width': "49%", 'display':'inline-block', 'text-align': 'center'},
                      ),
 
         dcc.Dropdown(id="slct_id_2",
@@ -61,7 +77,7 @@ app.layout = html.Div(children=[
                      placeholder="Select an id",
                      multi=False,
                      value=years[0],
-                     style={'width': "49%", 'display':'inline-block'},
+                     style={'width': "49%", 'display':'inline-block', 'text-align': 'center'},
                      ),
         ]),
 
@@ -69,43 +85,47 @@ app.layout = html.Div(children=[
         html.Div(id='output_container_2', children=[], style={'text-align': 'left', 'width': "49%", 'display': 'inline-block'}),
 
         html.Div(),
-        dcc.Graph(id='my_mobileDNA_map', figure={}, style={'width': "49%", 'display': 'inline-block'}),
-        dcc.Graph(id='my_mobileDNA_map_2', figure={}, style={'width': "49%", 'display': 'inline-block'}),
+        dcc.Graph(id='my_mobileDNA_map', figure={}, style={'width': "40%", 'display': 'inline-block'}),
+        dcc.Graph(id='my_mobileDNA_map_2', figure={}, style={'width': "40%", 'display': 'inline-block'}),
         ]),
 
     html.Div([
 
-        html.H1("Category usage for individual user", style={'text-align': 'center'}),
+        html.H1("Category usage for individual user 📊", style={'text-align': 'center'}),
         dcc.Dropdown(id="slct_id_3",
                      options=[{"label": x, "value": x} for x in ids],
                      multi=False,
-                     placeholder="Select an id",
                      value=ids[1],
-                     style={'width': "50%"}
+                     placeholder="Select an id",
+                     style={'width': "40%", 'align':'center', 'text-align': 'center'}
                      ),
+
+        html.Br(),
 
         dcc.Dropdown(id="slct_category",
                      options=[{"label": x, "value": x} for x in categories],
                      multi=False,
                      placeholder="Select a category",
                      value=categories[1],
-                     style={'width': "50%"}
+                     style={'width': "40%", 'align': 'center', 'text-align': 'center'}
                      ),
         html.Div(),
-        html.Div(id='output_container_3', children=[]),
+        html.Div(id='output_container_3', children=[], style={'text-align':'center'}),
         html.Br(),
-        dcc.Graph(id='my_mobileDNA_map_3', figure={}),
+        dcc.Graph(id='my_mobileDNA_map_3', figure={}, style={'text-align':'center'}),
 
     ]),
 
     html.Div([
 
-        html.H1("Location of app use", style={'text-align': 'center'}),
+        html.H1("Location of app use 📍", style={'text-align': 'center'}),
 
         dcc.DatePickerRange(
             id='my-date-picker-range',
-            start_date=date(2021,6,1),
-            end_date=date(2021,10,28),
+            start_date=date(2021,3,20),
+            end_date=date(2021,7,19),
+            min_date_allowed=date(2021,3,20),
+            max_date_allowed=date(2021,7,19),
             display_format='DD/MM/YYYY',
             start_date_placeholder_text='Pick a date',
             style={'text-align':'center'},
@@ -147,8 +167,6 @@ app.layout = html.Div(children=[
     [Input(component_id='slct_id', component_property='value')]
 )
 def update_graph_1(option_slctd):
-    print(option_slctd)
-    print(type(option_slctd))
 
     container = ""
 
@@ -242,12 +260,9 @@ def update_graph_3(selected_id, selected_cat):
 
 def update_graph_4(option_slctd, start_date, end_date):
     dff = df.copy()
-    print(start_date)
     dff = dff[dff["startTOD"] == option_slctd]
     dff = dff[dff["startDate"] >= start_date]
     dff = dff[dff["endDate"] <= end_date]
-    print(dff.head())
-
 
     container = ""
 
