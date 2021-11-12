@@ -17,6 +17,18 @@ mapbox_access_token = "pk.eyJ1Ijoic3Blcm5lZWwiLCJhIjoiY2t2dGtlNWQ5MjRmMzJ3cWhhaW
 ae = Appevents.load_data('data_qa.csv', sep=';')
 df = ae.__data__
 pd.set_option('display.max_columns', None)
+category_map = {"medical": "Health","chat": "Social","email": "Productivity","system": "none", "unknown": "none",
+                "social": "Social","tools": "Productivity","browser": "Web","productivity": "Productivity",
+                "photography": "none","business": "Productivity","music&audio": "Entertainment","clock": "none",
+                "banking": "Finance","lifestyle": "none","health&fitness": "Health","news&magazines": "News",
+                "gaming": "Entertainment","calling": "Calling","calendar": "Productivity","video": "Entertainment",
+                "maps&navigation": "Navigation","food & drink": "none","finance": "Finance","communication": "Social",
+                "ecommerce": "Shopping","retail": "Shopping","weather": "none","sports": "none","smartconnectivity": "none",
+                "card": "Entertainment","travel & local": "none","education": "Productivity","entertainment": "Entertainment",
+                "music & audio": "Entertainment","books & reference": "none","shopping": "Shopping","mobility": "Navigation",
+                "news & magazines": "News","puzzle": "Entertainment",}
+
+df['category'] = df['category'].apply(lambda x: category_map.get(x,x))
 df['duration'] = df['duration'] / 60
 print(df.head())
 
@@ -26,6 +38,7 @@ print(df.head())
 ids = df.id.unique()
 categories = df.category.unique()
 tods = df.startTOD.unique()
+years = df.startDate.dt.year.unique()
 
 # ------------------------------------------------------------------------------
 # App layout
@@ -44,10 +57,10 @@ app.layout = html.Div(children=[
                      ),
 
         dcc.Dropdown(id="slct_id_2",
-                     options=[{"label": x, "value": x} for x in ids],
+                     options=[{"label": x, "value": x} for x in years],
                      placeholder="Select an id",
                      multi=False,
-                     value=ids[0],
+                     value=years[0],
                      style={'width': "49%", 'display':'inline-block'},
                      ),
         ]),
@@ -62,13 +75,13 @@ app.layout = html.Div(children=[
 
     html.Div([
 
-        html.H1("Category usage over time", style={'text-align': 'center'}),
+        html.H1("Category usage for individual user", style={'text-align': 'center'}),
         dcc.Dropdown(id="slct_id_3",
                      options=[{"label": x, "value": x} for x in ids],
                      multi=False,
                      placeholder="Select an id",
                      value=ids[1],
-                     style={'width': "40%"}
+                     style={'width': "50%"}
                      ),
 
         dcc.Dropdown(id="slct_category",
@@ -76,7 +89,7 @@ app.layout = html.Div(children=[
                      multi=False,
                      placeholder="Select a category",
                      value=categories[1],
-                     style={'width': "40%"}
+                     style={'width': "50%"}
                      ),
         html.Div(),
         html.Div(id='output_container_3', children=[]),
@@ -133,7 +146,7 @@ app.layout = html.Div(children=[
      Output(component_id='my_mobileDNA_map', component_property='figure')],
     [Input(component_id='slct_id', component_property='value')]
 )
-def update_graph(option_slctd):
+def update_graph_1(option_slctd):
     print(option_slctd)
     print(type(option_slctd))
 
@@ -164,26 +177,26 @@ def update_graph(option_slctd):
      Output(component_id='my_mobileDNA_map_2', component_property='figure')],
     [Input(component_id='slct_id_2', component_property='value')]
 )
-def update_graph(option_slctd):
+def update_graph_2(option_slctd):
 
     container = ""
     dff = df.copy()
-    dff = dff[dff["id"] == option_slctd]
+    #dff = dff[dff["id"] == option_slctd]
 
-    dff = dff.groupby(['category'])['duration'].agg(duration='sum')
+    dff = dff.groupby(['startTOD'])['duration'].agg(duration='sum')
     dff.reset_index(inplace=True)
 
     # Plotly Express
     fig = px.pie(
         data_frame=dff,
         values='duration',
-        names='category',
+        names='startTOD',
         title='screen time per category',
         template='seaborn',
         color_discrete_sequence=px.colors.sequential.Blues,
     )
     fig.update_traces(textposition='inside', textinfo='percent+label')
-    fig.update_layout(title_text=f'usage for user with id: {option_slctd}', title_x=0.5)
+    fig.update_layout(title_text=f'distribution of use during the day', title_x=0.5)
 
     return container, fig
 
@@ -194,7 +207,7 @@ def update_graph(option_slctd):
      Input(component_id='slct_category', component_property='value')]
 )
 
-def update_graph(selected_id, selected_cat):
+def update_graph_3(selected_id, selected_cat):
 
     container = "screentime in '{}' category for user with id: {}".format(selected_cat, selected_id)
 
@@ -227,7 +240,7 @@ def update_graph(selected_id, selected_cat):
      Input('my-date-picker-range', 'end_date')]
 )
 
-def update_graph(option_slctd, start_date, end_date):
+def update_graph_4(option_slctd, start_date, end_date):
     dff = df.copy()
     print(start_date)
     dff = dff[dff["startTOD"] == option_slctd]
@@ -247,7 +260,7 @@ def update_graph(option_slctd, start_date, end_date):
         zoom=5,
         radius=10,
         mapbox_style='light',  # styles: carto-darkmatter, carto-positron, open-street-map, stamen-terrain, stamen-toner, stamen-watercolor, white-bg
-        template='seaborn',
+        template='simple_white',
         hover_data=['id'],
     )
 
