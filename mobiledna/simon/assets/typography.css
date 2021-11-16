@@ -7,8 +7,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 header {
-    padding: 0px;
+    padding: 10px;
     text-align: center;
+    align-self: flex-start;
     background: #007aca;
     color: black;
 }

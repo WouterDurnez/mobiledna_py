@@ -14,7 +14,7 @@ app = Dash(__name__)
 mapbox_access_token = "pk.eyJ1Ijoic3Blcm5lZWwiLCJhIjoiY2t2dGtlNWQ5MjRmMzJ3cWhhaWpzN2w5cyJ9.DakJIN8BzZ-JxaQpS1cVkA"
 
 # -- Import and clean data (importing csv into pandas)
-ae = Appevents.load_data('data_qa.csv', sep=';')
+ae = Appevents.load_data('./data/app/data_qa.csv', sep=';')
 df = ae.__data__
 pd.set_option('display.max_columns', None)
 category_map = {"medical": "Health","chat": "Social","email": "Productivity","system": "none", "unknown": "none",
@@ -85,8 +85,8 @@ app.layout = html.Div(children=[
         html.Div(id='output_container_2', children=[], style={'text-align': 'left', 'width': "49%", 'display': 'inline-block'}),
 
         html.Div(),
-        dcc.Graph(id='my_mobileDNA_map', figure={}, style={'width': "40%", 'display': 'inline-block'}),
-        dcc.Graph(id='my_mobileDNA_map_2', figure={}, style={'width': "40%", 'display': 'inline-block'}),
+        dcc.Graph(id='my_mobileDNA_map', figure={}, style={'width': "50%", 'display': 'inline-block'}),
+        dcc.Graph(id='my_mobileDNA_map_2', figure={}, style={'width': "50%", 'display': 'inline-block'}),
         ]),
 
     html.Div([
@@ -97,7 +97,7 @@ app.layout = html.Div(children=[
                      multi=False,
                      value=ids[1],
                      placeholder="Select an id",
-                     style={'width': "40%", 'align':'center', 'text-align': 'center'}
+                     style={'width': "100%", 'align':'center', 'text-align': 'center'}
                      ),
 
         html.Br(),
@@ -107,7 +107,7 @@ app.layout = html.Div(children=[
                      multi=False,
                      placeholder="Select a category",
                      value=categories[1],
-                     style={'width': "40%", 'align': 'center', 'text-align': 'center'}
+                     style={'width': "100%", 'align': 'center', 'text-align': 'center'}
                      ),
         html.Div(),
         html.Div(id='output_container_3', children=[], style={'text-align':'center'}),
