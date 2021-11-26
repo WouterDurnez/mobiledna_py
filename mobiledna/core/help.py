@@ -434,7 +434,10 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
     elif index == 'appevents':
 
         # Reformat data version (trying to convert to int)
-        df.data_version = pd.to_numeric(df.data_version, downcast='float')
+        try:
+            df.data_version = pd.to_numeric(df.data_version, downcast='float')
+        except ValueError:
+            df.data_version = df.data_version.astype(str)
 
         # Format timestamps
         df.startTime = df.startTime.astype('datetime64[ns]')
