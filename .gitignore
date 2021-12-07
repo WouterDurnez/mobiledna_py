@@ -24,3 +24,4 @@
 # Ignore credentials
 config.py
 .DS_Store
+mobiledna/mbrain/feat_calculation_kyle.ipynb
