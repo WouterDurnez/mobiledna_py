@@ -26,6 +26,9 @@ import numpy as np
 import pandas as pd
 from termcolor import colored
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 pp = PrettyPrinter(indent=4)
 
 ####################
@@ -605,6 +608,28 @@ def get_unique(column: str, df: pd.DataFrame) -> np.ndarray:
 
     return unique_values
 
+###########################
+# Visualization functions #
+###########################
+def plot_logdays_freq(df: pd.DataFrame) -> plt.figure:
+    """
+    Plot the logger frequency in function of the number of logging days
+    :param df: appevents dataframe
+    returns: a matplotlib figure object
+    """
+    df['date'] = df.startTime.dt.day
+    # loggers per date
+    loggers = df.groupby("date")['id'].nunique()
+
+    fig, axes = plt.subplots()
+
+    sns.histplot(data=loggers, ax=axes)
+
+    axes.set_xlabel('logging days')
+    axes.set_ylabel('# loggers')
+    plt.title('frequency of logging days')
+
+    return fig
 
 #####################
 # Storage functions #
