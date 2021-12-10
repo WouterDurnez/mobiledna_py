@@ -611,6 +611,8 @@ def get_unique(column: str, df: pd.DataFrame) -> np.ndarray:
 ###########################
 # Visualization functions #
 ###########################
+
+
 def plot_logdays_freq(df: pd.DataFrame) -> plt.figure:
     """
     Plot the logger frequency in function of the number of logging days
@@ -634,6 +636,7 @@ def plot_logdays_freq(df: pd.DataFrame) -> plt.figure:
 #####################
 # Storage functions #
 #####################
+
 
 def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, parquet=False):
     """
