@@ -468,7 +468,7 @@ class Appevents:
         groupby_list = ['id', series_unit] if series_unit else ['id']
 
         return data.groupby(((groupby_list + [
-            'startDate']) if not 'startDate' in groupby_list else groupby_list)).session.count().reset_index(). \
+            'startDate']) if not 'startDate' in groupby_list else groupby_list)).session.nunique().reset_index(). \
             groupby(groupby_list).session.mean().rename(name)
 
     def get_daily_events_sd(self, category=None, application=None, from_push=None, day_types=None,
@@ -531,7 +531,7 @@ class Appevents:
         groupby_list = ['id', series_unit] if series_unit else ['id']
 
         return data.groupby(((groupby_list + [
-            'startDate']) if not 'startDate' in groupby_list else groupby_list)).session.count().reset_index(). \
+            'startDate']) if not 'startDate' in groupby_list else groupby_list)).session.nunique().reset_index(). \
             groupby(groupby_list).session.std().rename(name)
 
     def get_daily_number_of_apps(self, series_unit=None) -> pd.Series:

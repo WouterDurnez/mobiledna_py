@@ -9,6 +9,10 @@
 
 # Data folder.
 /data/
+/mobiledna/data/
+
+# Builds
+/build/
 
 # Test folder.
 /mobiledna/test/
@@ -17,5 +21,8 @@
 /*.egg-info
 /*.egg
 
-# Ignore credentials
+# Ignore vpn credentials
 config.py
+
+# OS specific files
+*.DS_Store

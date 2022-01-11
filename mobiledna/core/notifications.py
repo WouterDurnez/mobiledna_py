@@ -301,21 +301,26 @@ class Notifications:
     # Compound getters #
     ####################
 
-    def get_daily_notifications(self, category=None, application=None, priority=0, posted=True) -> pd.Series:
+    def get_daily_notifications(self, category=None, application=None, time_of_day=None, priority=0, posted=True, avg=False) -> pd.Series:
         """
         Returns number of notifications per day
         """
 
         # Field name
-        name = ('daily_notifications' +
+        name = ((f'avg_' if avg else '') +
+                'daily_notifications' +
                 (f'_{category}' if category else '') +
-                (f'_{application}' if application else '')).lower()
+                (f'_{application}' if application else '') +
+                (f'_{time_of_day}' if time_of_day else '')).lower()
 
         # Filter data on request
-        data = self.filter(category=category, application=application, priority=priority, posted=posted)
+        data = self.filter(category=category, application=application, priority=priority, posted=posted, time_of_day=time_of_day)
 
-        return data.groupby(['id', 'date']).application.count().reset_index(). \
-            groupby('id').application.mean().rename(name)
+        if avg:
+            return data.groupby(['id', 'date']).application.count().reset_index(). \
+                groupby('id').application.mean().rename(name)
+        else:
+            return data.groupby(['id', 'date']).application.count().rename(name)
 
     def get_daily_notifications_sd(self, category=None, application=None, priority=0, posted=True) -> pd.Series:
         """
