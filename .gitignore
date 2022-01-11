@@ -21,7 +21,8 @@
 /*.egg-info
 /*.egg
 
-# Ignore credentials
+# Ignore vpn credentials
 config.py
-.DS_Store
-mobiledna/mbrain/feat_calculation_kyle.ipynb
+
+# OS specific files
+*.DS_Store
