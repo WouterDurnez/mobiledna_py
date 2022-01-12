@@ -7,11 +7,11 @@
 
 **mobileDNA** is an open-source statistical package written in Python 3. It can be used to analyze data stemming from the mobileDNA platform. The package contains the following modules:
 
-1. communication
+1. advanced
 
-2. basic
+2. communication
 
-3. advanced
+3. core
 
 4. dashboards
 
@@ -22,7 +22,7 @@ The package is intended for users who like to delve into the raw log data that i
 Questions, comments, or just need help?
 =======================================
 
-If you have questions, please address `Wouter Durnez <Wouter.Durnez@UGent.be>`_ or `Kyle Van Gaeveren <Kyle.VanGaeveren@UGent.be>`_.
+If you have questions, please address `Wouter Durnez <Wouter.Durnez@UGent.be>`_, `Simon Perneel <Simon.Perneel@UGent.be>`_ or `Kyle Van Gaeveren <Kyle.VanGaeveren@UGent.be>`_.
 
 
 Installation
@@ -46,7 +46,7 @@ In addition, some functions may require :
   * Seaborn
   * PPrint
 
-mobileDNA is a Python 3 package and is currently tested for Python 3.6 and 3.7. mobileDNA is not expected to work with Python 2.7 and below.
+mobileDNA is a Python 3 package and is currently tested for Python 3.6 - 3.8. mobileDNA is not expected to work with Python 2.7 and below.
 
 User installation
 -----------------
@@ -72,10 +72,10 @@ This documentation is under development. Below, you will find more information f
 Communication module
 --------------------
 
+**Warning:** Don't touch this module if you don't have access to the ES server!
+
 1. elastic.py
 #############
-
-**Warning:** Don't touch this module if you don't have access to the ES server!
 
 .. code-block:: python
 
@@ -98,6 +98,11 @@ Reads a list of mobileDNA IDs from a CSV file, containing a single column. Retur
 
 Extracts IDs from the server that have logged _something_ in the given time range, in the given index. Returns them as a dictionary (keys: IDs, values: doc_counts).
 
+2. snapshot_restore.py
+######################
+
+script that automates the process of snapshot creation, recovery and restoring from a snapshot to the dbcopy server.
+Requires a **config file** to work.
 
 
 Basic module
