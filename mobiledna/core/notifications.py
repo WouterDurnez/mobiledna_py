@@ -168,7 +168,7 @@ class Notifications:
             return result
 
     def filter(self, users=None, category=None, application=None, day_types=None, time_of_day=None, priority=None,
-               posted=None,
+               posted=None, ongoing=None,
                inplace=False):
 
         # If we want category-specific info, make sure we have category column
@@ -222,6 +222,13 @@ class Notifications:
 
             # ... filter
             data = data.loc[data.priority.isin(priority)]
+
+        # If we want to filter on new (False) or ongoing (True) notifications
+        if ongoing is not None:
+            ongoing = [ongoing] if not isinstance(ongoing, list) else ongoing
+
+            # ... filter
+            data = data.loc[data.ongoing.isin(ongoing)]
 
         # If we want to filter on the posted variable
         if posted:
@@ -301,7 +308,7 @@ class Notifications:
     # Compound getters #
     ####################
 
-    def get_daily_notifications(self, category=None, application=None, time_of_day=None, priority=0, posted=True, avg=False) -> pd.Series:
+    def get_daily_notifications(self, category=None, application=None, time_of_day=None, priority=0, posted=True, ongoing=None, avg=False) -> pd.Series:
         """
         Returns number of notifications per day
         """
@@ -314,7 +321,7 @@ class Notifications:
                 (f'_{time_of_day}' if time_of_day else '')).lower()
 
         # Filter data on request
-        data = self.filter(category=category, application=application, priority=priority, posted=posted, time_of_day=time_of_day)
+        data = self.filter(category=category, application=application, priority=priority, posted=posted, time_of_day=time_of_day, ongoing=ongoing)
 
         if avg:
             return data.groupby(['id', 'date']).application.count().reset_index(). \
