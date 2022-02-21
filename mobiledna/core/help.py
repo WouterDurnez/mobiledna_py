@@ -208,7 +208,7 @@ def set_dir(*dirs):
 # Time functions #
 ##################
 
-def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore_error=False) -> tuple:
+def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore__=False) -> tuple:
     """
     Takes a time range (formatted strings: '%Y-%m-%dT%H:%M:%S.%f'), and selects
     a random interval within these boundaries of the specified active_screen_time.
@@ -730,7 +730,7 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
         df = pd.read_csv(filepath_or_buffer=path,
                          # usecols=,
                          sep=sep, decimal=dec,
-                         error_bad_lines=False)
+                         on_bad_lines='warn')
 
     # Pickle
     elif file_type == 'pickle' or file_type == 'pkl':
