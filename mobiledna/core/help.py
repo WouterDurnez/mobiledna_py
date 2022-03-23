@@ -208,7 +208,7 @@ def set_dir(*dirs):
 # Time functions #
 ##################
 
-def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore__=False) -> tuple:
+def split_time_range(time_range: tuple, duration: pd.Timedelta, ignore_error=False) -> tuple:
     """
     Takes a time range (formatted strings: '%Y-%m-%dT%H:%M:%S.%f'), and selects
     a random interval within these boundaries of the specified active_screen_time.
@@ -612,24 +612,23 @@ def get_unique(column: str, df: pd.DataFrame) -> np.ndarray:
 # Visualization functions #
 ###########################
 
-
 def plot_logdays_freq(df: pd.DataFrame) -> plt.figure:
     """
-    Plot the logger frequency in function of the number of logging days
+    Plot histogram of # logdays for each logger
     :param df: appevents dataframe
-    returns: a matplotlib figure object
+    returns: a matplotlib figure
     """
     df['date'] = df.startTime.dt.day
     # loggers per date
-    loggers = df.groupby("date")['id'].nunique()
+    loggers = df.groupby('id')['date'].nunique()
 
-    fig, axes = plt.subplots()
+    fig, axes = plt.subplots(1,1, figsize=(12,8))
 
     sns.histplot(data=loggers, ax=axes)
 
     axes.set_xlabel('logging days')
     axes.set_ylabel('# loggers')
-    plt.title('frequency of logging days')
+    plt.title('Histogram # logging days per person')
 
     return fig
 
