@@ -23,6 +23,7 @@ import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
 import requests
 import time
 import base64
@@ -260,8 +261,9 @@ def create_new_snapshot_combined(driver=None):
     :return 'READY'
     """
     if not driver:
+        options = Options()
         ser = Service(r'./geckodriver')
-        driver = webdriver.Firefox(ser)
+        driver = webdriver.Firefox(service=ser, options=options)
 
     # login
     print("Logging in...")
@@ -375,7 +377,7 @@ def restore_snapshot(snapshot: str, sleep: int = 30):
 
 
 def main():
-    hlp.hi('Take and recover a snapshot to dbcopy database')
+    hlp.hi('Take and recover a snapshot to dbcopy server')
     hlp.log('A VPN connection is required to connect to ES server')
     # create new snapshot
     create_new_snapshot_combined()
