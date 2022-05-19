@@ -36,7 +36,7 @@ setup(
                      '(to communicate with the server), basic and advanced '
                      'analytic functionality, and visual dashboards.',
     url='https://github.ugent.be/imec-mict-UGent/mobiledna_py',
-    author='Kyle Van Gaeveren & Wouter Durnez',
+    author='Kyle Van Gaeveren, Wouter Durnez & Simon Perneel',
     author_email='Wouter.Durnez@UGent.be',
     license='MIT',
     classifiers=[
