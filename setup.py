@@ -27,7 +27,7 @@ setup(
     packages=find_packages(),
     cmdclass={'build_py': build_py},
     name='mobiledna',
-    version='0.6.1',
+    version='0.7.1',
     description='Codebase in support of mobileDNA platform',
     long_description='mobileDNA is a __data__ logging app that sheds '
                      'light on smartphone usage. Data collected '
