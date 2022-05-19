@@ -26,3 +26,7 @@ config.py
 
 # OS specific files
 *.DS_Store
+
+# Geckodriver
+mobiledna/communication/geckodriver
+mobiledna/communication/geckodriver.log
