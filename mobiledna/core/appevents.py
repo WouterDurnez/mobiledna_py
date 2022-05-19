@@ -151,7 +151,7 @@ class Appevents:
         file.close()
 
     def filter(self, users=None, category=None, application=None, from_push=None, day_types=None, time_of_day=None,
-               inplace=False):
+               hour_limits=None, inplace=False):
 
         # If we want category-specific info, make sure we have category column
         if category:
@@ -201,6 +201,11 @@ class Appevents:
 
             # ... and filter
             data = data.loc[data.startTOD.isin(time_of_day)]
+
+        # If we want specific hours (e.g. ['20:00', '00:00'])
+        if hour_limits:
+            index = pd.DatetimeIndex(data['startTime'])
+            data = data.iloc[index.indexer_between_time(hour_limits[0], hour_limits[1])]
 
         if inplace:
             self.__data__ = data
@@ -408,7 +413,7 @@ class Appevents:
     ####################
 
     def get_daily_events(self, category=None, application=None, from_push=None, day_types=None,
-                         time_of_day=None, series_unit=None) -> pd.Series:
+                         time_of_day=None, hour_limits=None, series_unit=None) -> pd.Series:
         """
         Returns number of appevents per day
         """
@@ -422,7 +427,7 @@ class Appevents:
 
         # Filter data on request
         data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types,
-                           time_of_day=time_of_day)
+                           time_of_day=time_of_day, hour_limits=hour_limits)
 
         # Final grouping occurs here
         groupby_list = ['id', series_unit] if series_unit else ['id']
@@ -432,7 +437,7 @@ class Appevents:
             groupby(groupby_list).application.mean().rename(name)
 
     def get_daily_duration(self, category=None, application=None, from_push=None, day_types=None,
-                           time_of_day=None, series_unit=None) -> pd.Series:
+                           time_of_day=None, hour_limits=None, series_unit=None) -> pd.Series:
         """
         Returns duration per day
         """
@@ -446,7 +451,7 @@ class Appevents:
 
         # Filter data on request
         data = self.filter(category=category, application=application, from_push=from_push, day_types=day_types,
-                           time_of_day=time_of_day)
+                           time_of_day=time_of_day, hour_limits=hour_limits)
 
         # Final grouping occurs here
         groupby_list = ['id', series_unit] if series_unit else ['id']
