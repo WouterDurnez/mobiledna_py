@@ -365,6 +365,35 @@ def add_time_of_day_annotation(df: pd.DataFrame, time_cols: list = ['startTime']
     return df
 
 
+##################################################
+# Age, age category                              #
+##################################################
+def add_age_from_surveyid(df: pd.DataFrame, agecat=False):
+    """
+    Add age of id depending on surveyId field
+    :param df: appevents dataframe
+    :param agecat: add age category
+    :return: annotated dataframe
+    """
+    log('Adding age column from surveyId.', lvl=1)
+    # Extract birthdate
+    df['birthdate'] = pd.to_datetime(df.surveyId.str.slice(0, 8), format='%d%m%Y', errors='coerce')
+    # Calculate age at time of appevent
+    df['age'] = np.floor((df['startTime'] - df['birthdate']).dt.days / 365.25).astype('Int64')
+
+    if agecat:
+        age_bins = [15, 24, 34, 44, 54, 64, 100]
+        categories = ['16-24', '25-34', '35-44', '45-54', '55-64', '65+']
+        df['agecat'] = pd.cut(df['age'], age_bins, labels=categories)
+
+    # Newborns don't have a smartphone
+    df['age'].replace({0: np.nan, 1: np.nan, 2: np.nan, 3: np.nan}, inplace=True)
+
+    df.drop(columns='birthdate', inplace=True)
+
+    return df
+
+
 if __name__ == '__main__':
     # Let's go
     hlp.hi()
