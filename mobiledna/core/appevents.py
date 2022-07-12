@@ -19,7 +19,7 @@ from os.path import join
 from tqdm import tqdm
 
 import mobiledna.core.help as hlp
-from mobiledna.core.annotate import add_category, add_date_annotation, add_time_of_day_annotation
+from mobiledna.core.annotate import add_category, add_date_annotation, add_time_of_day_annotation, add_age_from_surveyid
 from mobiledna.core.help import log, remove_first_and_last, longest_uninterrupted
 
 tqdm.pandas()
@@ -312,6 +312,10 @@ class Appevents:
         self.__data__ = add_time_of_day_annotation(df=self.__data__, time_cols=time_col)
 
         return self
+
+    def add_age(self, agecat=False):
+
+        self.__data__ = add_age_from_surveyid(df=self.__data__, agecat=agecat)
 
     # Getters #
     ###########
