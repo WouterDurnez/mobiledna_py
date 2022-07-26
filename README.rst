@@ -102,7 +102,7 @@ Extracts IDs from the server that have logged _something_ in the given time rang
 ######################
 
 Script that automates the process of creating a snapshot creation, and recovering and restoring it to the dbcopy server.
-Requires a **config file** to work.
+Requires a **config file** with server credentials to work.
 
 
 Core module
