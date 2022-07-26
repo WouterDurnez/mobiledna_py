@@ -101,7 +101,7 @@ Extracts IDs from the server that have logged _something_ in the given time rang
 2. snapshot_restore.py
 ######################
 
-script that automates the process of creating a snapshot creation, and recovering and restoring it from a snapshot to the dbcopy server.
+script that automates the process of creating a snapshot creation, and recovering and restoring it to the dbcopy server.
 Requires a **config file** to work.
 
 
