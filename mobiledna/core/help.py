@@ -354,9 +354,9 @@ def hi(title=None, log_level: int = None, data_dir=None, cache_dir: str = None, 
 
     set_param(log_level=log_level, data_dir=data_dir, cache_dir=cache_dir)
 
-    print("LOG_LEVEL is set to {}.".format(colored(LOG_LEVEL, 'red')))
-    print("DATA_DIR is set to {}".format(colored(os.path.abspath(DATA_DIR), 'red')))
-    print("CACHE_DIR is set to {}".format(colored(CACHE_DIR, 'red')))
+    print("📝 LOG_LEVEL is set to {}.".format(colored(LOG_LEVEL, 'red')))
+    print("🗄 DATA_DIR is set to {}".format(colored(os.path.abspath(DATA_DIR), 'red')))
+    print("🫗 CACHE_DIR is set to {}".format(colored(CACHE_DIR, 'red')))
     print()
 
     # Set this warning if you intend to keep working on the same data frame,
