@@ -19,7 +19,7 @@ from os.path import join
 from tqdm import tqdm
 
 import mobiledna.core.help as hlp
-from mobiledna.core.annotate import add_category, add_date_annotation, add_time_of_day_annotation, add_age_from_surveyid
+from mobiledna.core.annotate import add_category, add_appname, add_date_annotation, add_time_of_day_annotation, add_age_from_surveyid
 from mobiledna.core.help import log, remove_first_and_last, longest_uninterrupted
 
 tqdm.pandas()
@@ -32,7 +32,7 @@ tqdm.pandas()
 class Appevents:
 
     def __init__(self, data: pd.DataFrame = None, add_categories=False, add_date_annotation=False,
-                 get_session_sequences=False, strip=False):
+                 add_appname=False, get_session_sequences=False, strip=False):
 
         # Drop 'Unnamed' columns
         for col in data.columns:
@@ -83,6 +83,10 @@ class Appevents:
         # Add date annotations on request
         if add_date_annotation:
             self.add_date_type()
+
+        # Add appname on request
+        if add_appname:
+            self.add_appname()
 
         # Strip on request
         if strip:
@@ -304,6 +308,12 @@ class Appevents:
     def add_date_type(self, date_cols='startDate', holidays_separate=False):
 
         self.__data__ = add_date_annotation(df=self.__data__, date_cols=date_cols, holidays_separate=holidays_separate)
+
+        return self
+
+    def add_appname(self, scrape=False, overwrite=False):
+
+        self.__data__ = add_appname(df=self.__data__, scrape=scrape, overwrite=overwrite)
 
         return self
 
