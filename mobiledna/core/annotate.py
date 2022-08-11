@@ -88,13 +88,15 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
             meta = {'source': 'play_store'}
 
             # Find the name
-            name = soup.find('h1', {'class': 'AHFaub'})
+            name = soup.find('h1', itemprop='name')
 
             # If we can't even find that, get out of here
             if not name:
                 raise Exception(f'Could not find anything on {app_name}.')
+
             else:
-                meta['name'] = name.text
+                # Get name (without tag line)
+                meta['name'] = name.text.replace(':', '-').split('-')[0]
 
             # Find info
             info = soup.find_all(attrs={'class': 'R8zArc'})
@@ -126,6 +128,9 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
 
         except Exception as e:
             log(f'Problem for <{app_name}> - {e}', lvl=3)
+            # Fill in appcode as name for unknown apps
+            meta['name'], meta['genre'] = app_name, 'unknown'
+            known_apps[app_name] = meta
             unknown_apps.append(app_name)
 
         zzz = rnd.uniform(1, 3)
@@ -211,13 +216,14 @@ def add_appname(df: pd.DataFrame, scrape=False, overwrite=False, alias: bool = F
 
     :param df: data frame (appevents or notifications)
     :param scrape: scrape Play Store for new info (set to True if no meta data is found)
+    :param overwrite: clear cache and make new cache file
     :param alias: use app alias (True) or PlayStore name (False)
     :return: Annotated data frame
     """
 
     # Load app meta data (with alias)
     try:
-        meta = dict(np.load(join(hlp.CACHE_DIR, 'app_meta_alias.npy'), allow_pickle=True).item())
+        meta = dict(np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item())
     except Exception as e:
         log('No app meta data found. Scraping Play store.', lvl=1)
         scrape = True
@@ -398,23 +404,29 @@ if __name__ == '__main__':
     # Let's go
     hlp.hi()
     hlp.set_dir(join(pardir, 'cache'))
-    hlp.set_param(log_level=1,
-                  data_dir=join(pardir, pardir, 'data', 'glance', 'processed_appevents'),
-                  cache_dir=join(pardir, 'cache'))
+
+    #hlp.set_param(log_level=1,
+      #            data_dir=join(pardir, pardir, 'data', 'glance', 'processed_appevents'),
+       #           cache_dir=join(pardir, 'cache'))
 
     # Load the data and gather apps
     log('Collecting app names.', lvl=1)
-    appevents_files = listdir(hlp.DATA_DIR)
-    apps = {}
+    #appevents_files = listdir(hlp.DATA_DIR)
+    #apps = {}
 
     # Load data
-    data = hlp.load(path=join(hlp.DATA_DIR, appevents_files[0]), index='appevents')
+    data = pd.read_parquet('../../data/mdna_2020_sample/mdna_total_sample_2020/f77d6138-7d11-4b24-a9c2-770da6b3aa0b_appevents.parquet')
+    data = add_appname(data, scrape=True, overwrite=False)
+
 
     # Add apps to the set (no duplicates)
-    app_counts = Counter(list(data.application))
-    apps = {**apps, **app_counts}
+    #app_counts = Counter(list(data.application))
+    #apps = {**apps, **app_counts}
 
-    data = add_date_annotation(data, ['startDate', 'endDate'])
+    #data = add_date_annotation(data, ['startDate', 'endDate'])
+
+    #data = add_time_of_day_annotation(data)
+    print(data.head(10))
 
 # Sort apps by number of times they occurred in data
 '''apps = {k: v for k, v in sorted(apps.items(), key=lambda item: item[1], reverse=True)}
