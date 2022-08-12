@@ -385,7 +385,7 @@ def add_age_from_surveyid(df: pd.DataFrame, agecat=False):
     # Extract birthdate
     df['birthdate'] = pd.to_datetime(df.surveyId.str.slice(0, 8), format='%d%m%Y', errors='coerce')
     # Calculate age at time of appevent
-    df['age'] = np.floor((df['startTime'] - df['birthdate']).dt.days / 365.25).astype('Int64')
+    df['age'] = np.floor((df['startTime'] - df['birthdate']).dt.days / 365.25).astype('float') # float type for NaN's
 
     if agecat:
         age_bins = [15, 24, 34, 44, 54, 64, 100]
