@@ -25,6 +25,7 @@ from os import makedirs
 from os.path import join, pardir
 from requests import get
 from tqdm import tqdm
+from google_play_scraper import app
 
 from mobiledna.core import help as hlp
 from mobiledna.core.help import log
@@ -72,55 +73,29 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
                 if not overwrite:
                     continue
 
-        # Combined into full URLs per app
-        url = f'{play_store_url}{app_name}'
-
-        # Get HTML from URL
-        response = get(url)
-
-        # Create BeautifulSoup object
-        soup = BeautifulSoup(response.text, 'html.parser')
-
         # Get attributes
         try:
 
-            # Store all meta data for this app here
+            # Store all metadata for this app here
             meta = {'source': 'play_store'}
 
-            # Find the name
-            name = soup.find('h1', itemprop='name')
+            # Find app details
+            result = app(
+                app_name,
+                lang='en',
+                country='be'
+            )
 
-            # If we can't even find that, get out of here
-            if not name:
-                raise Exception(f'Could not find anything on {app_name}.')
-
-            else:
-                # Get name (without tag line)
-                meta['name'] = name.text.replace(':', '-').split('-')[0]
-
-            # Find info
-            info = soup.find_all(attrs={'class': 'R8zArc'})
-
-            # ... extract text where possible
-            info_text = [info_bit.text for info_bit in info]
-
-            # ... and fill in the blanks
-            while len(info_text) < 3:
-                info_text.append(None)
-
-            meta['company'] = info_text[0]
-            meta['genre'] = info_text[1]
-            meta['genre2'] = info_text[2]
+            # Get name, company and genre of the app
+            meta['name'] = result.get('title').split(':')[0]
+            meta['company'] = result.get('developer')
+            meta['genre'] = result.get('genre')
 
             # Find purchase info
-            purchases = soup.find('div', {'class': 'bSIuKf'})
-            if purchases:
-                meta['purchases'] = purchases.text
+            meta['purchases'] = result.get('minInstalls')
 
             # Find rating info
-            rating = soup.find('div', {'class': 'BHMmbe'})
-            if rating:
-                meta['rating'] = rating.text
+            meta['rating'] = result.get('score')
 
             # Add it to the big dict (lol)
             log(f'Got it! <{app_name}> meta data was scraped.', lvl=3)
