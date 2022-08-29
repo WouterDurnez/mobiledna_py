@@ -31,6 +31,7 @@ def get_association_rules(apps: Appevents, min_confidence=.5, min_support_tresh=
     :param min_lift: minimum lift for the rule (lift A=>B = prob(B|A)/prob(B)
     :param min_length: minimum number of apps in the rule
     """
+    # todo: option do this on person-level instead of all sessions together
     # group all sessions and get applications
     transactions = list(apps.get_data().groupby('session')['application'].apply(list))
 
