@@ -326,6 +326,8 @@ class Appevents:
     def add_age(self, agecat=False):
 
         self.__data__ = add_age_from_surveyid(df=self.__data__, agecat=agecat)
+        
+        return self
 
     # Getters #
     ###########

@@ -101,11 +101,11 @@ Extracts IDs from the server that have logged _something_ in the given time rang
 2. snapshot_restore.py
 ######################
 
-script that automates the process of snapshot creation, recovery and restoring from a snapshot to the dbcopy server.
-Requires a **config file** to work.
+Script that automates the process of creating a snapshot creation, and recovering and restoring it to the dbcopy server.
+Requires a **config file** with server credentials, and the geckodriver (https://github.com/mozilla/geckodriver/releases) to work
 
 
-Basic module
+Core module
 ------------
 
 
