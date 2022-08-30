@@ -1,5 +1,6 @@
 beautifulsoup4==4.10.0
 dash==2.0.0
+google-play-scraper==1.2.2
 elasticsearch==6.3.1
 holidays==0.11.3.1
 matplotlib==3.5.1
