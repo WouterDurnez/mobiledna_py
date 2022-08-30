@@ -103,8 +103,8 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
 
         except Exception as e:
             log(f'Problem for <{app_name}> - {e}', lvl=3)
-            # Fill in appcode as name for unknown apps
-            meta['name'], meta['genre'] = app_name, 'unknown'
+            # Fill in NaN's for apps that are not found in play store
+            meta['name'], meta['genre'], meta['custom_genre'] = np.NaN, np.NaN, np.NaN
             known_apps[app_name] = meta
             unknown_apps.append(app_name)
 
@@ -136,12 +136,13 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
     return known_apps, unknown_apps
 
 
-def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFrame:
+def add_category(df: pd.DataFrame, scrape=False, overwrite=False, custom_cat=True) -> pd.DataFrame:
     """
     Take a data frame and annotate rows with category field, based on application name.
 
     :param df:data frame (appevents or notifications)
     :param scrape: scrape Play Store for new info (set to True if no meta data is found)
+    :param custom_cat: Use own categorisation (=better) instead of play store categorisation
     :return: Annotated data frame
     """
 
@@ -164,20 +165,22 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFram
         meta, _ = scrape_play_store(app_names=applications, cache=meta, overwrite=overwrite)
 
     # Add category field to row
-    def adding_category_row(app: str):
+    def adding_category_row(app: str, custom_cat: bool):
 
-        if app in meta.keys() and meta[app]['genre']:
-            try:
-                return meta[app]['genre'].lower()
-            except:
-                print(f"Exception for {app}")
-                return meta[app]['genre']
+        if app in meta.keys() and meta[app]['genre'] and custom_cat:
+
+            return meta[app]['custom_genre']
+
+        elif app in meta.keys() and meta[app]['genre']:
+
+            return meta[app]['genre']
+
         else:
             return 'unknown'
 
     tqdm.pandas(desc="Adding category", position=0, leave=True)
-    df['category'] = df.application.progress_apply(adding_category_row)
-
+    df['category'] = df.progress_apply(lambda x: adding_category_row(x.application, custom_cat=custom_cat), axis=1)
+    
     return df
 
 
