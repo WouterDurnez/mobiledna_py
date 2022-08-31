@@ -148,7 +148,7 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False, custom_cat=Tru
 
     # Load app meta data
     try:
-        meta = dict(np.load(join('../cache', 'app_meta.npy'), allow_pickle=True).item())
+        meta = dict(np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item())
     except Exception as e:
         log('No app meta data found. Scraping Play store.', lvl=1)
         scrape = True
@@ -201,7 +201,7 @@ def add_appname(df: pd.DataFrame, scrape=False, overwrite=False, alias: bool = F
 
     # Load app meta data (with alias)
     try:
-        meta = dict(np.load(join('../cache', 'app_meta.npy'), allow_pickle=True).item())
+        meta = dict(np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item())
     except Exception as e:
         log('No app meta data found. Scraping Play store.', lvl=1)
         scrape = True
