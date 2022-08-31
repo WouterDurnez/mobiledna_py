@@ -72,7 +72,7 @@ This documentation is under development. Below, you will find more information f
 Communication module
 --------------------
 
-**Warning:** Don't touch this module if you don't have access to the ES server!
+⚠️ Don't touch this module if you don't have access to the ES server!
 
 1. elastic.py
 #############
