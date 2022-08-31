@@ -69,10 +69,10 @@ Reference
 
 This documentation is under development. Below, you will find more information for each of the package modules.
 
-Communication module
+📡 Communication module 
 --------------------
 
-⚠️ Don't touch this module if you don't have access to the ES server!
+**Warning** Don't touch this module if you don't have access to the ES server!
 
 1. elastic.py
 #############
@@ -105,7 +105,7 @@ Script that automates the process of creating a snapshot creation, and recoverin
 Requires a **config file** with server credentials, and the geckodriver (https://github.com/mozilla/geckodriver/releases) to work
 
 
-Core module
+⏺ Core module 
 ------------
 
 
