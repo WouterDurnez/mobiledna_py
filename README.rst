@@ -13,7 +13,7 @@
 
 3. core
 
-4. dashboards
+4. dashboard
 
 
 The package is intended for users who like to delve into the raw log data that is provided through the mobileDNA logging application. It can be used and expanded on at will. Go bonkers.
@@ -46,7 +46,7 @@ In addition, some functions may require :
   * Seaborn
   * PPrint
 
-mobileDNA is a Python 3 package and is currently tested for Python 3.6 - 3.8. mobileDNA is not expected to work with Python 2.7 and below.
+mobileDNA is a Python 3 package and is currently tested for Python 3.6 - 3.10. mobileDNA is not expected to work with Python 2.7 and below.
 
 User installation
 -----------------
