@@ -131,7 +131,7 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
 
     # Store app meta data cache
     hlp.set_dir(hlp.CACHE_DIR)
-    np.save(file=join(hlp.CACHE_DIR, 'app_meta.npy'), arr=known_apps)
+    np.save(file=join('../cache', 'app_meta.npy'), arr=known_apps)
 
     return known_apps, unknown_apps
 
@@ -148,7 +148,7 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False, custom_cat=Tru
 
     # Load app meta data
     try:
-        meta = dict(np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item())
+        meta = dict(np.load(join('../cache', 'app_meta.npy'), allow_pickle=True).item())
     except Exception as e:
         log('No app meta data found. Scraping Play store.', lvl=1)
         scrape = True
@@ -167,11 +167,11 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False, custom_cat=Tru
     # Add category field to row
     def adding_category_row(app: str, custom_cat: bool):
 
-        if app in meta.keys() and meta[app]['genre'] and custom_cat:
+        if custom_cat and app in meta.keys() and meta[app].get('custom_genre'):
 
             return meta[app]['custom_genre']
 
-        elif app in meta.keys() and meta[app]['genre']:
+        elif app in meta.keys() and meta[app].get('genre'):
 
             return meta[app]['genre']
 
@@ -201,7 +201,7 @@ def add_appname(df: pd.DataFrame, scrape=False, overwrite=False, alias: bool = F
 
     # Load app meta data (with alias)
     try:
-        meta = dict(np.load(join(hlp.CACHE_DIR, 'app_meta.npy'), allow_pickle=True).item())
+        meta = dict(np.load(join('../cache', 'app_meta.npy'), allow_pickle=True).item())
     except Exception as e:
         log('No app meta data found. Scraping Play store.', lvl=1)
         scrape = True
