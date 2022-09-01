@@ -25,6 +25,7 @@ from os import makedirs
 from os.path import join, pardir
 from requests import get
 from tqdm import tqdm
+from google_play_scraper import app
 
 from mobiledna.core import help as hlp
 from mobiledna.core.help import log
@@ -72,55 +73,29 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
                 if not overwrite:
                     continue
 
-        # Combined into full URLs per app
-        url = f'{play_store_url}{app_name}'
-
-        # Get HTML from URL
-        response = get(url)
-
-        # Create BeautifulSoup object
-        soup = BeautifulSoup(response.text, 'html.parser')
-
         # Get attributes
         try:
 
-            # Store all meta data for this app here
+            # Store all metadata for this app here
             meta = {'source': 'play_store'}
 
-            # Find the name
-            name = soup.find('h1', itemprop='name')
+            # Find app details
+            result = app(
+                app_name,
+                lang='en',
+                country='be'
+            )
 
-            # If we can't even find that, get out of here
-            if not name:
-                raise Exception(f'Could not find anything on {app_name}.')
-
-            else:
-                # Get name (without tag line)
-                meta['name'] = name.text.replace(':', '-').split('-')[0]
-
-            # Find info
-            info = soup.find_all(attrs={'class': 'R8zArc'})
-
-            # ... extract text where possible
-            info_text = [info_bit.text for info_bit in info]
-
-            # ... and fill in the blanks
-            while len(info_text) < 3:
-                info_text.append(None)
-
-            meta['company'] = info_text[0]
-            meta['genre'] = info_text[1]
-            meta['genre2'] = info_text[2]
+            # Get name, company and genre of the app
+            meta['name'] = result.get('title').split(':')[0]
+            meta['company'] = result.get('developer')
+            meta['genre'] = result.get('genre')
 
             # Find purchase info
-            purchases = soup.find('div', {'class': 'bSIuKf'})
-            if purchases:
-                meta['purchases'] = purchases.text
+            meta['purchases'] = result.get('minInstalls')
 
             # Find rating info
-            rating = soup.find('div', {'class': 'BHMmbe'})
-            if rating:
-                meta['rating'] = rating.text
+            meta['rating'] = result.get('score')
 
             # Add it to the big dict (lol)
             log(f'Got it! <{app_name}> meta data was scraped.', lvl=3)
@@ -128,8 +103,8 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
 
         except Exception as e:
             log(f'Problem for <{app_name}> - {e}', lvl=3)
-            # Fill in appcode as name for unknown apps
-            meta['name'], meta['genre'] = app_name, 'unknown'
+            # Fill in NaN's for apps that are not found in play store
+            meta['name'], meta['genre'], meta['custom_genre'] = np.NaN, np.NaN, np.NaN
             known_apps[app_name] = meta
             unknown_apps.append(app_name)
 
@@ -156,17 +131,18 @@ def scrape_play_store(app_names: list, cache: dict, overwrite=False) -> (dict, l
 
     # Store app meta data cache
     hlp.set_dir(hlp.CACHE_DIR)
-    np.save(file=join(hlp.CACHE_DIR, 'app_meta.npy'), arr=known_apps)
+    np.save(file=join('../cache', 'app_meta.npy'), arr=known_apps)
 
     return known_apps, unknown_apps
 
 
-def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFrame:
+def add_category(df: pd.DataFrame, scrape=False, overwrite=False, custom_cat=True) -> pd.DataFrame:
     """
     Take a data frame and annotate rows with category field, based on application name.
 
     :param df:data frame (appevents or notifications)
     :param scrape: scrape Play Store for new info (set to True if no meta data is found)
+    :param custom_cat: Use own categorisation (=better) instead of play store categorisation
     :return: Annotated data frame
     """
 
@@ -189,20 +165,22 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False) -> pd.DataFram
         meta, _ = scrape_play_store(app_names=applications, cache=meta, overwrite=overwrite)
 
     # Add category field to row
-    def adding_category_row(app: str):
+    def adding_category_row(app: str, custom_cat: bool):
 
-        if app in meta.keys() and meta[app]['genre']:
-            try:
-                return meta[app]['genre'].lower()
-            except:
-                print(f"Exception for {app}")
-                return meta[app]['genre']
+        if custom_cat and app in meta.keys() and meta[app].get('custom_genre'):
+
+            return meta[app]['custom_genre']
+
+        elif app in meta.keys() and meta[app].get('genre'):
+
+            return meta[app]['genre']
+
         else:
             return 'unknown'
 
     tqdm.pandas(desc="Adding category", position=0, leave=True)
-    df['category'] = df.application.progress_apply(adding_category_row)
-
+    df['category'] = df.progress_apply(lambda x: adding_category_row(x.application, custom_cat=custom_cat), axis=1)
+    
     return df
 
 

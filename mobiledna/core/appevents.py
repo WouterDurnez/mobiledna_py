@@ -299,9 +299,9 @@ class Appevents:
 
         return Appevents(data=new_data)
 
-    def add_category(self, scrape=False, overwrite=False):
+    def add_category(self, scrape=False, overwrite=False, custom_cat=True):
 
-        self.__data__ = add_category(df=self.__data__, scrape=scrape, overwrite=overwrite)
+        self.__data__ = add_category(df=self.__data__, scrape=scrape, overwrite=overwrite, custom_cat=custom_cat)
 
         return self
 

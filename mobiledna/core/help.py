@@ -38,7 +38,7 @@ pp = PrettyPrinter(indent=4)
 # Set log level (1 = only top level log messages -> 3 = all log messages)
 LOG_LEVEL = 3
 DATA_DIR = os.path.join(os.pardir, os.pardir, 'data')
-CACHE_DIR = os.path.join(os.pardir, 'cache')
+CACHE_DIR = os.path.join(os.curdir, 'cache')
 INDICES = {'notifications', 'appevents', 'sessions', 'logs', 'connectivity'}
 INDEX_FIELDS = {
     'notifications': [

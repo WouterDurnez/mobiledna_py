@@ -339,7 +339,7 @@ def fetch(index: str, ids: list, time_range=('2017-01-01T00:00:00.000', '2020-01
             body['query']['constant_score']['filter']['bool']['must'].append(range_restriction)
 
         except:
-            log("WARNING: Failed to restrict range. Getting all data.", lvl=1)
+            log("⚠️ WARNING: Failed to restrict range. Getting all data.", lvl=1)
 
         # Count entries
         count_ids = es.count(index="mobiledna", doc_type=index, body=body)
@@ -405,7 +405,7 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
 
     # Did we get data?
     if data is None:
-        raise Exception("ERROR: Received empty data. Failed to export.")
+        raise Exception("⛔️ ERROR: Received empty data. Failed to export.")
 
     # Gather data for data frame export
     to_export = []
@@ -413,7 +413,7 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
 
         # Check if we got data!
         if not d:
-            log(f"WARNING: Did not receive data for {id}!", lvl=1)
+            log(f"⚠️ WARNING: Did not receive data for {id}!", lvl=1)
             continue
 
         for dd in d:
@@ -422,7 +422,7 @@ def export_elastic(dir: str, name: str, index: str, data: dict, pickle=True, csv
     # If there's no data...
     if not to_export:
 
-        log(f"WARNING: No data to export!", lvl=1)
+        log(f"⚠️ WARNING: No data to export!", lvl=1)
 
     else:
         # ...else, convert to formatted data frame
@@ -469,7 +469,7 @@ def pipeline(name: str, ids: list, dir: str,
     # Go over interesting INDICES
     for index in indices:
         # Get data from server
-        log("Getting started on <" + index + ">...", lvl=1)
+        log("🚀 Getting started on <" + index + ">...", lvl=1)
         data = fetch(index=index, ids=ids, time_range=time_range)
 
         # Export data
@@ -489,7 +489,7 @@ def pipeline(name: str, ids: list, dir: str,
 
         all_df[index] = data
 
-    log("DONE!")
+    log("✅ DONE!")
 
     return all_df
 
@@ -514,7 +514,7 @@ def split_pipeline(ids: list, dir: str,
 
     # Make sure IDs is the list (kind of unpythonic)
     if not isinstance(ids, list):
-        log("WARNING: ids argument was not a list (single ID?). Converting to list.", lvl=1)
+        log("⚠️ WARNING: ids argument was not a list (single ID?). Converting to list.", lvl=1)
         ids = [ids]
 
     # Gather ids for which fetch failed here
@@ -538,7 +538,7 @@ def split_pipeline(ids: list, dir: str,
             log(f"Failed to get data for {id}: {e}", lvl=1)
             failed.append(id)
 
-    log("\nALL DONE!\n")
+    log("\n✅ ALL DONE!\n")
     return failed
 
 
