@@ -171,7 +171,7 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False, custom_cat=Tru
 
             return meta[app]['custom_genre']
 
-        elif app in meta.keys() and meta[app].get('genre'):
+        elif not custom_cat and app in meta.keys() and meta[app].get('genre'):
 
             return meta[app]['genre']
 
