@@ -178,6 +178,7 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False, custom_cat=Tru
             return 'unknown'
 
     df['category'] = [adding_category_row(x) for x in tqdm(df['application'], desc='Adding category', total=len(df))]
+
     return df
 
 
@@ -358,7 +359,7 @@ def add_age_from_surveyid(df: pd.DataFrame, agecat=False):
     # Extract birthdate
     df['birthdate'] = pd.to_datetime(df.surveyId.str.slice(0, 8), format='%d%m%Y', errors='coerce')
     # Calculate age at time of appevent
-    df['age'] = np.floor((df['startTime'] - df['birthdate']).dt.days / 365.25).astype('float') # float type for NaN's
+    df['age'] = np.floor((df['startTime'] - df['birthdate']).dt.days / 365.25).astype('float')  # float type for NaN compability
 
     if agecat:
         age_bins = [15, 24, 34, 44, 54, 64, 100]
@@ -376,7 +377,7 @@ def add_age_from_surveyid(df: pd.DataFrame, agecat=False):
 if __name__ == '__main__':
     # Let's go
     hlp.hi()
-    hlp.set_dir(join(pardir, 'cache'))
+    hlp.set_param(data_dir='../../data/Total_sample/2020', cache_dir='../cache')
 
     #hlp.set_param(log_level=1,
       #            data_dir=join(pardir, pardir, 'data', 'glance', 'processed_appevents'),
