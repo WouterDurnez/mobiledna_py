@@ -109,6 +109,10 @@ Requires a **config file** with server credentials, and the geckodriver (https:/
 ------------
 
 
+📊 Dashboard module 
+------------
+
+
 Development
 ===========
 
