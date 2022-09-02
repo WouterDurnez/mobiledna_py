@@ -96,7 +96,7 @@ class Appevents:
         self.__session_sequences__ = self.get_session_sequences() if get_session_sequences else None
 
     @classmethod
-    def load_data(cls, path: str, file_type='infer', sep=',', decimal='.'):
+    def load_data(cls, path: str, file_type='infer', sep=',', decimal='.', bare=False):
         """
         Construct Appevents object from path to data
 
@@ -104,10 +104,11 @@ class Appevents:
         :param file_type: file extension (csv, parquet, or pickle)
         :param sep: separator for csv files
         :param decimal: decimal for csv files
+        :param bare: load only the most necessary columns for a more lightweight dataframe
         :return: Appevents object
         """
 
-        data = hlp.load(path=path, index='appevents', file_type=file_type, sep=sep, dec=decimal)
+        data = hlp.load(path=path, index='appevents', file_type=file_type, sep=sep, dec=decimal, bare=bare)
 
         return cls(data=data)
 

@@ -165,22 +165,20 @@ def add_category(df: pd.DataFrame, scrape=False, overwrite=False, custom_cat=Tru
         meta, _ = scrape_play_store(app_names=applications, cache=meta, overwrite=overwrite)
 
     # Add category field to row
-    def adding_category_row(app: str, custom_cat: bool):
-
+    def adding_category_row(app: str):
         if custom_cat and app in meta.keys() and meta[app].get('custom_genre'):
 
             return meta[app]['custom_genre']
 
-        elif app in meta.keys() and meta[app].get('genre'):
+        elif not custom_cat and app in meta.keys() and meta[app].get('genre'):
 
             return meta[app]['genre']
 
         else:
             return 'unknown'
 
-    tqdm.pandas(desc="Adding category", position=0, leave=True)
-    df['category'] = df.progress_apply(lambda x: adding_category_row(x.application, custom_cat=custom_cat), axis=1)
-    
+    df['category'] = [adding_category_row(x) for x in tqdm(df['application'], desc='Adding category', total=len(df))]
+
     return df
 
 
@@ -236,9 +234,7 @@ def add_appname(df: pd.DataFrame, scrape=False, overwrite=False, alias: bool = F
                 except KeyError:
                     return 'unknown'
 
-    tqdm.pandas(desc=f"Adding appname {'alias' if alias else ''}", position=0, leave=True)
-
-    df['name'] = df.application.progress_apply(adding_appname_row)
+    df['name'] = [adding_appname_row(x) for x in tqdm(df['application'], desc='Adding appname', total=len(df))]
 
     return df
 
@@ -363,7 +359,7 @@ def add_age_from_surveyid(df: pd.DataFrame, agecat=False):
     # Extract birthdate
     df['birthdate'] = pd.to_datetime(df.surveyId.str.slice(0, 8), format='%d%m%Y', errors='coerce')
     # Calculate age at time of appevent
-    df['age'] = np.floor((df['startTime'] - df['birthdate']).dt.days / 365.25).astype('float') # float type for NaN's
+    df['age'] = np.floor((df['startTime'] - df['birthdate']).dt.days / 365.25).astype('float')  # float type for NaN compability
 
     if agecat:
         age_bins = [15, 24, 34, 44, 54, 64, 100]
@@ -381,7 +377,7 @@ def add_age_from_surveyid(df: pd.DataFrame, agecat=False):
 if __name__ == '__main__':
     # Let's go
     hlp.hi()
-    hlp.set_dir(join(pardir, 'cache'))
+    hlp.set_param(data_dir='../../data/Total_sample/2020', cache_dir='../cache')
 
     #hlp.set_param(log_level=1,
       #            data_dir=join(pardir, pardir, 'data', 'glance', 'processed_appevents'),
