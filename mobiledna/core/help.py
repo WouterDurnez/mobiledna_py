@@ -100,6 +100,25 @@ INDEX_FIELDS = {
         'id',
     ]
 }
+# Fields for a more lightweight df:
+MIN_INDEX_FIELDS = {
+    'appevents': [
+        'id',
+        'application',
+        'startTime',
+        'endTime',
+        'session',
+        'surveyId'
+    ],
+    'notifications': [
+        'id',
+        'application',
+        'ongoing',
+        'posted',
+        'priority',
+        'surveyId',
+        'time'],
+}
 
 
 ####################
@@ -441,22 +460,33 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
             df.data_version = pd.to_numeric(df.data_version, downcast='float')
         except ValueError:
             df.data_version = df.data_version.astype(str)
+        except AttributeError as e:
+            print(e)
 
         # Format timestamps
         df.startTime = df.startTime.astype('datetime64[ns]')
         df.endTime = df.endTime.astype('datetime64[ns]')
 
         # Downcast lat/long
-        df.latitude = pd.to_numeric(df.latitude, downcast='float')
-        df.longitude = pd.to_numeric(df.longitude, downcast='float')
+        try:
+            df.latitude = pd.to_numeric(df.latitude, downcast='float')
+            df.longitude = pd.to_numeric(df.longitude, downcast='float')
+        except Exception as e:
+            print(e)
 
         # Downcast battery column
-        df.battery = df.battery.astype('uint8')
+        try:
+            df.battery = df.battery.astype('uint8')
+        except Exception as e:
+            print(e)
 
         # Factorize categorical variables (ids, apps, session numbers, etc.)
         to_category = ['id', 'application', 'session', 'studyKey', 'surveyId', 'model']
         for column in to_category:
-            df[column] = df[column].astype('category')
+            try:
+                df[column] = df[column].astype('category')
+            except Exception as e:
+                print(e)
 
     elif index == 'notifications':
 
@@ -511,7 +541,7 @@ def format_data(df: pd.DataFrame, index: str) -> pd.DataFrame:
             df.drop(labels=[col], axis=1, inplace=True)
 
     # Drop duplicates
-    df.drop_duplicates(inplace=True)
+    #df.drop_duplicates(inplace=True)
 
     log("Successfully formatted dataframe.", lvl=3)
 
@@ -694,7 +724,7 @@ def save(df: pd.DataFrame, dir: str, name: str, csv_file=True, pickle=False, par
 
 
 @time_it
-def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataFrame:
+def load(path: str, index: str, file_type='infer', sep=';', dec='.', format=False, bare=False) -> pd.DataFrame:
     """
     Wrapper function to load mobileDNA data frames.
 
@@ -703,7 +733,7 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
     :param file_type: file type (default: infer from path, other options: pickle, csv, or parquet)
     :param sep: field separator
     :param dec: decimal symbol
-    :param format: format data frame to save space (watch out for redundant formatting!)
+    :param bare: load only the most necessary columns for a more lightweight dataframe
     :return: data frame
     """
 
@@ -711,6 +741,9 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
     if index not in INDICES:
         raise Exception(
             "Invalid doc type! Please choose 'appevents', 'notifications', 'sessions', 'connectivity' or 'logs'.")
+
+    # Set params if bare loading
+    usecols = columns = MIN_INDEX_FIELDS[index] if bare else None
 
     # Load data frame, depending on file type
     if file_type == 'infer':
@@ -729,7 +762,8 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
         df = pd.read_csv(filepath_or_buffer=path,
                          # usecols=,
                          sep=sep, decimal=dec,
-                         on_bad_lines='warn')
+                         on_bad_lines='warn',
+                         usecols=usecols)
 
     # Pickle
     elif file_type == 'pickle' or file_type == 'pkl':
@@ -737,7 +771,9 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
 
     # Parquet
     elif file_type == 'parquet':
-        df = pd.read_parquet(path=path, engine='auto')
+        df = pd.read_parquet(path=path,
+                             engine='auto',
+                             columns=columns)
 
     # Unknown
     else:
@@ -760,8 +796,9 @@ def load(path: str, index: str, file_type='infer', sep=';', dec='.') -> pd.DataF
             check_index(df=df, index='sessions', ignore_error=True)):
         add_duration(df)
     """
+    if format:
+        df = format_data(df=df, index=index)
 
-    # df = format_data(df=df, index=index)
     return df
 
 
