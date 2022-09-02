@@ -200,21 +200,21 @@ class Notifications:
         if day_types:
             day_types = [day_types] if not isinstance(day_types, list) else day_types
 
-            if 'startDOTW' not in self.__data__.columns:
+            if 'DOTW' not in self.__data__.columns:
                 self.add_date_type()
 
             # ... and filter
-            data = data.loc[data.startDOTW.isin(day_types)]
+            data = data.loc[data.DOTW.isin(day_types)]
 
         # If we want specific times fo day (morning, noon, etc.)
         if time_of_day:
             time_of_day = [time_of_day] if not isinstance(time_of_day, list) else time_of_day
 
-            if 'startTOD' not in self.__data__.columns:
+            if 'TOD' not in self.__data__.columns:
                 self.add_time_of_day()
 
             # ... and filter
-            data = data.loc[data.startTOD.isin(time_of_day)]
+            data = data.loc[data.TOD.isin(time_of_day)]
 
         # If we want to filter on priority levels
         if priority:

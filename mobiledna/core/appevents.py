@@ -565,7 +565,7 @@ class Appevents:
         # Final grouping occurs here
         groupby_list = ['id', series_unit] if series_unit else ['id']
 
-        return data.groupby(groupby_list + ['startDate']).application.count().reset_index(). \
+        return data.groupby(groupby_list + ['startDate']).application.nunique().reset_index(). \
             groupby(groupby_list).application.mean().rename(name)
 
     def get_daily_number_of_apps_sd(self, series_unit=None) -> pd.Series:
@@ -577,7 +577,7 @@ class Appevents:
         groupby_list = ['id', series_unit] if series_unit else ['id']
 
         return data.groupby(((groupby_list + [
-            'startDate']) if not 'startDate' in groupby_list else groupby_list)).application.count().reset_index(). \
+            'startDate']) if not 'startDate' in groupby_list else groupby_list)).application.nunique().reset_index(). \
             groupby(groupby_list).application.std().rename(name)
 
     def get_sessions_starting_with(self, category=None, application=None, normalize=False, series_unit=None):

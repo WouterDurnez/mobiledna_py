@@ -13,7 +13,7 @@
 
 3. core
 
-4. dashboards
+4. dashboard
 
 
 The package is intended for users who like to delve into the raw log data that is provided through the mobileDNA logging application. It can be used and expanded on at will. Go bonkers.
@@ -46,7 +46,7 @@ In addition, some functions may require :
   * Seaborn
   * PPrint
 
-mobileDNA is a Python 3 package and is currently tested for Python 3.6 - 3.8. mobileDNA is not expected to work with Python 2.7 and below.
+mobileDNA is a Python 3 package and is currently tested for Python 3.6 - 3.10. mobileDNA is not expected to work with Python 2.7 and below.
 
 User installation
 -----------------
@@ -69,10 +69,10 @@ Reference
 
 This documentation is under development. Below, you will find more information for each of the package modules.
 
-Communication module
+📡 Communication module 
 --------------------
 
-**Warning:** Don't touch this module if you don't have access to the ES server!
+**Warning** Don't touch this module if you don't have access to the ES server!
 
 1. elastic.py
 #############
@@ -105,7 +105,7 @@ Script that automates the process of creating a snapshot creation, and recoverin
 Requires a **config file** with server credentials, and the geckodriver (https://github.com/mozilla/geckodriver/releases) to work
 
 
-Core module
+⏺ Core module 
 ------------
 
 
