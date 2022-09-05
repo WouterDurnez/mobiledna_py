@@ -3,7 +3,8 @@
 .. figure:: docs/pictures/logo_mobiledna.png
    :align: center
 
-https://img.shields.io/pypi/dm/mobiledna?color=green&label=Downloads%20PyPi&style=plastic
+[![Downloads](https://img.shields.io/pypi/dm/mobiledna?color=green&label=Downloads%20PyPi&style=plastic)](https://img.shields.io/pypi/dm/mobiledna?color=green&label=Downloads%20PyPi&st
+yle=plastic)
 
 **mobileDNA** is an open-source statistical package written in Python 3. It can be used to analyze data stemming from the mobileDNA platform. The package contains the following modules:
 
